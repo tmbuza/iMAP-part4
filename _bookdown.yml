@@ -1,0 +1,14 @@
+language:
+  ui:
+    chapter_name: "Chapter "
+delete_merged_file: true
+
+book_filename: "microbiome-part3"
+output_dir:
+rmd_files: [
+"index.Rmd",
+"04a_.Rmd",
+"04b_.Rmd",
+"99_appendix.Rmd",
+"999-references.Rmd"
+]

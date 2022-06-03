@@ -1,0 +1,108 @@
+---
+title: "PART4...In Progress..."
+subtitle: "End-to-End Practical User Guides"
+author: "Teresia Mrema-Buza, A Microbiome Data Science Enthusiast and Owner of the Complex Data Insights, LLC, USA"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+knit: bookdown::render_book
+output:
+  bookdown::bs4_book:
+    includes:
+      in_header:
+    template: bs4_part4_template.html
+documentclass: book
+classoption: openany #remove empty pages in pdf doc
+colorlinks: true
+css:
+- style.css
+- css/style.css
+always_allow_html: true
+fig_caption: true
+fontsize: 12pt
+geometry: margin=1in
+indent: false
+keep_tex: true
+link-citations: true
+mainfont: Times New Roman
+biblio-style: apalike
+description: |
+  This is a practical user's guide for **Systematic Microbiome Data Analysis in R**. The guide provides integrated and highly curated solutions for achieving better results.
+---
+
+
+```{r pkgbiblib, include=FALSE}
+knitr::write_bib(c(
+  .packages(), 'base','bookdown','rmarkdown','tidyverse','shiny','vegan','data.table, dendextend, robCompositions, microbiome, ALDEx2, caret, rms, phyloseq'
+), 'library/packages.bib')
+```
+
+```{r setup, echo=FALSE}
+source(file = "R/common.R")
+if (!dir.exists("data")) {dir.create("data")}
+```
+
+# PART4 ...In Progress... {-#frontpage}
+
+```{r include=FALSE}
+library(DiagrammeR)
+library(DiagrammeRsvg)
+
+graph <- DiagrammeR::grViz("
+digraph {
+graph [layout = dot, rankdir = TD]
+
+node [shape = rectangle, style = filled, fillcolor = white]
+
+A [label = 'Clean Data', shape = folder, fillcolor = grey]
+B [label = 'Training \n Set', shape = folder, fillcolor = grey]
+C [label = 'Testing \n Set', shape = folder, fillcolor = grey]
+D [label = 'Model \nTraining Subset\n(X-Train)']
+E [label = 'Validation Subset\n(y_Train)']
+F [label = 'Better Feature \nSelection']
+G [label = 'Retrain \nModel']
+H [label = 'Best Feature \nSelection']
+I [label = 'Validated \nFeatures']
+J [label = 'Best Performing \nModel', shape = rectangle]
+K [label = 'Predict \nTest Set Labels', shape = rectangle]
+L [label = 'Compare Known \nwith Predicted', shape = rectangle]
+M [label = 'Cross \nValidation', shape = rectangle]
+N [label = 'Model \nImprovement', shape = rectangle]
+
+{A}  -> B
+{A}  -> C
+{B}  -> D
+{B}  -> E
+{D}  -> F
+{F}  -> G
+{G}  -> D
+{G}  -> H
+{H}  -> E
+{E}  -> I
+{I}  -> J
+{J}  -> C
+{C}  -> K
+{K}  -> L
+{L}  -> M
+{M}  -> N
+
+
+
+}", height = 1000, width = 600)
+
+# 2. Convert to SVG, then save as png
+part4_flow = DiagrammeRsvg::export_svg(graph)
+part4_flow = charToRaw(part4_flow) # flatten
+rsvg::rsvg_png(part4_flow, "img/part4_flow.png")
+```
+
+
+<a href=""><img src="images/abund_bar.gif" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/></a>
+
+## Quick Glimpse {-}
+Investigating the role of microbial communities in health and disease requires a thorough knowledge of the entire analytical process. Using wrong approaches can cost a significant amount of dollars and lengthy process to achieve the desired results. This is <b>PART 3</b> of the practical user guides intended to provide analytical support to the microbiome research community. The entire guide is reproducible, allowing users to easily follow along. If interested, user may use this model to publish their findings in a book format.
+
+## Structure of this guide {-}
+This guide is divided into chapters to facilitate easy navigation. Each chapter contains several sections as displayed in the navigation bars on the left and right. Click the hyper-linked text if you want to jump into a specific chapter or section.
+
+## Code availability {-}
+The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part4/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part4/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
