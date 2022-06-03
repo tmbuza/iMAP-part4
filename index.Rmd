@@ -49,7 +49,7 @@ library(DiagrammeRsvg)
 
 graph <- DiagrammeR::grViz("
 digraph {
-graph [layout = dot, rankdir = TD]
+graph [layout = dot, rankdir = LR]
 
 node [shape = rectangle, style = filled, fillcolor = white]
 
