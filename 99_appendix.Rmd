@@ -1,0 +1,73 @@
+# (APPENDIX) APPENDIX {-}
+
+# Saved Data Objects
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## RDS Format for Individual Object
+```{r}
+
+rds <- list.files(path="./RDataRDS", pattern = "*.rds", full.names = TRUE)
+rds
+
+```
+
+## RData Format for Multiple Objects
+```{r}
+
+rdata <- list.files(path="./RDataRDS", pattern = "*.RData", full.names = TRUE)
+rdata
+
+```
+
+
+## CSV or TSV Format Files
+```{r}
+
+list.files(path="./RDataRDS", pattern = "*.csv|tsv", full.names = TRUE)
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+## All-in-One Input-Output Data
+lsdata("RDataRDS/saved_objects.RData")
+```
+
+
+
+## How to reload RDS or RData
+```{block, type="tmbinfo", echo=T}
+### RDS format e.g. foo.rds
+foo <-`readRDS("RDataRDS/foo.rds")`
+
+### RData format e.g. foo.RData
+`load("RDataRDS/foo.RData", verbose = TRUE)`
+
+### List objects in RData
+`lsdata("foo.RData")`
+```
+
+
+
+# Software and Packages
+
+## Basic dependencies
+* `r R.version.string`
+* `tidyverse` (v. `r packageVersion("tidyverse")`)
+* `knitr` (v. `r packageVersion("knitr")`)
+* `rmarkdown` (v. `r packageVersion("rmarkdown")`)
+* `bookdown` (v. `r packageVersion("bookdown")`)
+
+
+## Available on machine used 
+```{r}
+sessionInfo()
+
+```
+
+
+
