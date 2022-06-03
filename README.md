@@ -1,6 +1,13 @@
 ...IN PROGRESS...
 
 
+|Repo| Description| Repo Output|
+|-------------------------|---------------------------------------------------|-----------------|
+|[iMAP-PART1](https://github.com/tmbuza/iMAP-part1/) | How to Get Started with Microbiome Data Analysis | [eBook](https://complexdatainsights.com/books/microbiome-analysis/getting-started) |
+|[iMAP-PART2](https://github.com/tmbuza/iMAP-part2/) | Bioinformatics Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/bioinformatics-analysis) |
+|[iMAP-PART3](https://github.com/tmbuza/iMAP-part3/) | Exploratory Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/exploratory-analysis) |
+
+
 ## Citation
 > Please consider citing the [iMAP article](https://rdcu.be/b5iVj) if you find any part of the iMAP practical user guides helpful in your analysis:
 
