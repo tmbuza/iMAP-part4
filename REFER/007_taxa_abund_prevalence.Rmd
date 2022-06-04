@@ -1,0 +1,69 @@
+# (PART) TASK 2: 6-11 FILTER REL ABUND {-}
+
+# Filter Abundance Less than 0.005  {#task-6-11}
+
+## Import and processed data
+```{r}
+data <- readRDS("RDataRDS/taxlevels.rds")
+otu_taxa_abund <- readRDS("RDataRDS/otu_taxa_abund.rds")
+
+data <- otu_taxa_abund[, -1] %>% select(Species, !all_of(taxlevels)) %>% 
+  distinct(Species, .keep_all = T) %>% tibble::column_to_rownames("Species")
+head(data)[1:5, 1:5]
+
+```
+
+## Prepare dataset1 to filter from
+- Dataset 1 is unfiltered
+- Abundance is set at 0.0%
+- Prevalence is set at 0%
+```{r}
+library(OTUtable)
+
+dataset1 <- filter_taxa(data, abundance = 0.0, persistence = 0)
+
+cat("Dimension of dataset1\n")
+dim(dataset1)
+
+cat("Dataset1 structure\n\n")
+dataset1[1:5, 1:5]
+
+saveRDS(dataset1, "RDataRDS/dataset1.rds")
+```
+
+## Prepare dataset 2
+- Data set 2 contains species with a relative abundance of 0.005 or more
+- Abundance is set at 0.005%
+- Prevalence is set at 0%
+```{r}
+library(OTUtable)
+
+dataset2 <- filter_taxa(dataset1, abundance = 0.005, persistence = 0)
+
+cat("Dimension of dataset2\n")
+dim(dataset2)
+
+cat("Dataset2 structure\n\n")
+dataset2[1:5, 1:5]
+
+saveRDS(dataset2, "RDataRDS/dataset2.rds")
+```
+
+
+# (PART) TASK 2: 12-17 FILTER REL ABUND {-}
+
+# Filter abundance less than 0.005 and prevalence less than 10 perc {#task-12-17}
+- Data set 3 contains species with a relative abundance of 0.005 or more and occurring in 10% (or more) of all samples.
+
+## Prepare dataset 3
+```{r}
+dataset2 <- readRDS("RDataRDS/dataset2.rds")
+dataset3 <- filter_taxa(dataset2, abundance = 0.005, persistence = 10)
+cat("Dimension of dataset3\n")
+dim(dataset3)
+
+cat("Dataset3 structure\n\n")
+dataset3[1:5, 1:5]
+
+saveRDS(dataset2, "RDataRDS/dataset3.rds")
+```

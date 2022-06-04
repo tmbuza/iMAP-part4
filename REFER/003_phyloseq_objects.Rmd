@@ -1,0 +1,278 @@
+# (PART) PHYLOSEQ OBJECTS {-}
+
+# Create Phyloseq Objects
+```{r}
+source("R/common.R")
+```
+
+## Import tidy data
+```{r}
+metadata <- readRDS("../../amplicon-16s-rrna/RDataRDS/metadata_w_lat_lon.rds")
+head(metadata_bushmeat)
+
+otu_abund <- read_tsv("../../amplicon-16s-rrna/data/final.opti_mcc.shared") %>% 
+  select(-label, -numOtus) %>% 
+  transpose(keep.names = "otu", make.names = "Group")
+head(otu_abund)
+
+taxonomy <- readRDS("../../amplicon-16s-rrna/RDataRDS/taxonomy.rds")
+head(taxonomy)
+composite <- readRDS("../../amplicon-16s-rrna/RDataRDS/otu_rel_abund_long.rds")
+head(composite)
+
+composite_wide <- readRDS("../../amplicon-16s-rrna/RDataRDS/otu_rel_abund_wide.rds")
+head(composite_wide)
+
+```
+
+## Import data
+```{r message=FALSE, warning=FALSE}
+sampledata <- metadata %>% tibble::column_to_rownames("sample_id")
+ps_metadata <- sample_data(sampledata)
+write_csv(as.data.frame(ps_metadata), "RDataRDS/ps_metadata.csv")
+saveRDS(ps_metadata, "RDataRDS/ps_metadata.rds")
+
+## Abundance data
+otutable <- otu_abund %>% tibble::column_to_rownames("otu")
+ps_otutable <- otu_table(otutable, taxa_are_rows = TRUE)
+write_csv(as.data.frame(ps_otutable), "RDataRDS/ps_otutable.csv")
+saveRDS(ps_otutable, "RDataRDS/ps_otutable.rds")
+
+## Taxonomy data
+taxonomy_m <- as.matrix(taxonomy %>% tibble::column_to_rownames("otu"))
+ps_taxonomy <- tax_table(taxonomy_m)
+
+write_csv(as.data.frame(ps_taxonomy), "RDataRDS/ps_taxonomy.csv")
+saveRDS(as.data.frame(ps_taxonomy), "RDataRDS/ps_taxonomy.rds")
+
+## Merge Phyloseq Object
+ps_otumetatax <- merge_phyloseq(ps_otutable, ps_metadata, ps_taxonomy)
+ps_tree = rtree(ntaxa(ps_otumetatax), rooted=TRUE, tip.label=taxa_names(ps_otumetatax))
+
+ps_raw <- phyloseq::merge_phyloseq(ps_otumetatax, ps_tree)
+otu_get(ps_raw)[1:5, 1:5]
+saveRDS(ps_raw, "RDataRDS/ps_raw.rds")
+```
+
+```{r}
+ps_rel <- phyloseq::transform_sample_counts(ps_raw, function(x){x / sum(x)})
+otu_get(ps_rel)[1:5, 1:5]
+saveRDS(ps_rel, "RDataRDS/ps_rel.rds")
+```
+
+
+```{r}
+save(
+# tidy phyloseq objects
+  ps_metadata,
+  ps_otutable,
+  ps_taxonomy,
+  ps_otumetatax,
+  ps_rel,
+  ps_raw,
+  file = "RDataRDS/phyloseq_objects_.RData")
+
+```
+
+## Review Phyloseq Objects
+```{r}
+ps <- readRDS("RDataRDS/ps_raw.rds")
+```
+
+### Number of taxa
+```{r}
+ntaxa(ps)
+```
+
+### Split Kingdom
+```{r}
+phyloseq_sep_tax(ps, TaxRank = "kingdom", drop_NA = FALSE)
+
+```
+
+
+### Number of samples
+```{r}
+nsamples(ps)
+```
+
+### Sample names
+```{r}
+sample_names(ps)
+```
+
+### Rank names
+```{r}
+rank_names(ps)
+```
+
+### Sample variables
+```{r}
+sample_variables(ps)
+```
+
+### Abundance table
+```{r}
+otu_table(ps)[1:5, 1:5]
+```
+
+### Taxonomy table
+```{r}
+tax_table(ps)[1:5, 1:5]
+```
+
+Phylogenetic tree
+```{r}
+phy_tree(ps)
+```
+
+### Taxa names
+```{r}
+taxa_names(ps)[1:10]
+```
+
+## Summarize Phyloseq Object
+```{r message=FALSE, warning=FALSE}
+
+microbiome::summarize_phyloseq(ps)
+
+```
+
+
+## Sort Samples
+```{r}
+sort(phyloseq::sample_sums(ps), decreasing = F)
+
+```
+
+## Drop Samples Below a Threshold
+```{r}
+ps1perc0 <- phyloseq::subset_samples(ps, phyloseq::sample_sums(ps) > 1)
+ps1perc0
+```
+
+## Drop Taxa Below a Threshold
+```{r}
+pstaxa01 <- phyloseq::prune_taxa(phyloseq::taxa_sums(ps) > 1, ps)
+pstaxa01 
+```
+
+
+# Phyloseq Faceted Bar Charts
+- Package: Phyloseq
+
+## Plot Relative Abund Grouped by Metadata
+
+```{r ps_abund_bar, fig.height=10, fig.width=10}
+sample_data <- readRDS("RDataRDS/ps_rel.rds")
+
+# Kingdom
+k_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "kingdom") +
+  geom_bar(aes(color = kingdom, fill = kingdom), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +# nolegend +
+  labs(title = "kingdom abundance") + 
+  centertitle 
+
+# phylum
+p_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "phylum") +
+  geom_bar(aes(color = phylum, fill = phylum), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  #nolegend +
+  labs(title = "phylum abundance") + centertitle
+
+# class
+c_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "class") +
+  geom_bar(aes(color = class, fill = class), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + nolegend +
+  labs(title = "class abundance") + centertitle 
+
+# order
+o_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "order") +
+  geom_bar(aes(color = order, fill = order), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + nolegend +
+  labs(title = "order abundance") + centertitle
+
+# family    
+f_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "family") +
+  geom_bar(aes(color = family, fill = family), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + nolegend +
+  labs(title = "family abundance") + centertitle
+
+# genus   
+g_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "genus") +
+  geom_bar(aes(color = genus, fill = genus), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  #facet_wrap(~ ecosystem, scales = "free") +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + nolegend +
+  labs(title = "genus abundance") + centertitle
+
+# # species   
+# s_ps_bar <- phyloseq::plot_bar(ps_rel, fill = "species") +
+#   geom_bar(aes(color = species, fill = species), stat = "identity", position = "stack") +
+#   labs(x = "", y = "Relative Abundance\n") +
+#   #facet_wrap(~ ecosystem, scales = "free") +
+#   theme(panel.background = element_blank(),
+#         axis.text.x=element_blank(),
+#         axis.ticks.x=element_blank()) + nolegend +
+#   labs(title = "species abundance") + centertitle +
+#   guides(color=guide_legend(nrow=4, byrow=TRUE))
+        
+```
+
+```{r ps_abund_bar_gif, echo=FALSE, fig.height=10, fig.width=10, animation.hook='gifski', interval=3, fig.path="./GIFS/"}
+k_ps_bar
+p_ps_bar
+c_ps_bar
+o_ps_bar
+f_ps_bar
+g_ps_bar
+# s_ps_bar
+```
+
+
+```{r include=T}
+## Current saved objects
+resave(
+# phyloseq objects
+  ps_metadata,
+  ps_otutable,
+  ps_taxonomy,
+  ps_rel,
+  ps_raw,
+
+  # phyloseq bars
+  k_ps_bar,
+  p_ps_bar,
+  c_ps_bar,
+  o_ps_bar,
+  f_ps_bar,
+  g_ps_bar,
+ 
+
+  file = "RDataRDS/project6data.RData")
+
+load("RDataRDS/project6data.RData", verbose = T)
+
+```

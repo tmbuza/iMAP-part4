@@ -1,0 +1,426 @@
+# Graphical Data Exploration {#explore-rel-abund}
+
+## Load libraries and data
+```{r}
+source("R/common.R")
+library(tidyverse)
+library(phyloseq)
+library(metagMisc)
+library(microbiome)
+library(microViz)
+
+load("../iMAP_part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+load("../iMAP_part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+## Barcharts using `ggplo2` package
+
+```{r taxon_rel_abund_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "kingdom",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Kingdom Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+#-------------------
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "phylum",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Phylumm Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+#-------------------
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "class",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Class Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+#-------------------
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "order",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Order Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+#-------------------
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "family",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Family Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+#-------------------
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified *\\1*"),
+         taxon = str_replace(taxon,
+                             "^(\\S*)$", "*\\1*"))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 0.05,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 1)) %>%
+  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Genus Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+```
+
+
+## Barcharts using `phyloseq` package
+```{r ps_taxon_bar, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+library(phyloseq)
+
+ps_rel <- ps_mo_rel
+  
+
+# Kingdom
+phyloseq::plot_bar(ps_rel, fill = "kingdom") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Kingdom Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+  
+# phylum
+phyloseq::plot_bar(ps_rel, fill = "phylum") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Phylum Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+# class
+phyloseq::plot_bar(ps_rel, fill = "class") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Class Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+# order
+phyloseq::plot_bar(ps_rel, fill = "order") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Order Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+# family    
+phyloseq::plot_bar(ps_rel, fill = "family") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Family Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+
+# genus   
+phyloseq::plot_bar(ps_rel, fill = "genus") +
+  geom_col(position = "fill") +
+  labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Genus Abundance",
+       fill = "Taxon") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(8, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle
+```
+
+```{r}
+library(microViz)
+ps_rel %>%
+  comp_barplot(
+    tax_level = "genus", n_taxa = 15, other_name = "Other",
+    taxon_renamer = function(x) stringr::str_remove(x, " [ae]t rel."),
+    palette = distinct_palette(n = 15, add = "grey90"),
+    merge_other = FALSE, bar_outline_colour = "darkgrey"
+  ) +
+  coord_flip() +
+  facet_wrap("nationality", nrow = 1, scales = "free") +
+  labs(x = NULL, y = NULL) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+

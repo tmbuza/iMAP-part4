@@ -38,7 +38,6 @@ lsdata("RDataRDS/saved_objects.RData")
 ```
 
 
-
 ## How to reload RDS or RData
 ```{block, type="tmbinfo", echo=T}
 ### RDS format e.g. foo.rds
@@ -61,7 +60,6 @@ foo <-`readRDS("RDataRDS/foo.rds")`
 * `knitr` (v. `r packageVersion("knitr")`)
 * `rmarkdown` (v. `r packageVersion("rmarkdown")`)
 * `bookdown` (v. `r packageVersion("bookdown")`)
-
 
 ## Available on machine used 
 ```{r}

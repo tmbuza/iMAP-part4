@@ -1,0 +1,215 @@
+# (PART) ALPHA DIVERSITY {-}
+
+# Alpha Diversity Analysis
+> The input files must contain the raw read count per sample (only integers).
+- Taxa must be in rows and if not transpose the table.
+
+## Import Count Data
+```{r }
+source("R/common.R")
+load("RDataRDS/taxa_abund_tables.RData", verbose = T)
+
+```
+## Kingdom Richness
+```{r}
+k_richness <- df_kingdom %>% tibble::column_to_rownames("Kingdom") %>% mutate_if(is.numeric, ~1 * (. > 0))
+k_richness[, 1:5]
+
+```
+
+## Phylum Richness
+```{r}
+p_richness <- df_phylum %>% tibble::column_to_rownames("Phylum") %>% mutate_if(is.numeric, ~1 * (. > 0))
+p_richness[1:5, 1:5]
+
+```
+
+## Class Richness
+```{r}
+c_richness <- df_class %>% tibble::column_to_rownames("Class") %>% mutate_if(is.numeric, ~1 * (. > 0))
+c_richness[1:5, 1:5]
+
+```
+
+## Order Richness
+```{r}
+o_richness <- df_order %>% tibble::column_to_rownames("Order") %>% mutate_if(is.numeric, ~1 * (. > 0))
+o_richness[1:5, 1:5]
+
+```
+
+## Family Richness
+```{r}
+f_richness <- df_family %>% tibble::column_to_rownames("Family") %>% mutate_if(is.numeric, ~1 * (. > 0))
+f_richness[1:5, 1:5]
+
+```
+
+## Genus Richness
+```{r}
+g_richness <- df_genus %>% tibble::column_to_rownames("Genus") %>% mutate_if(is.numeric, ~1 * (. > 0))
+g_richness[1:5, 1:5]
+
+```
+
+## Species Richness
+```{r}
+s_richness <- df_species %>% tibble::column_to_rownames("Species") %>% mutate_if(is.numeric, ~1 * (. > 0))
+s_richness[1:5, 1:5]
+
+```
+
+## Cummulative Taxa Richness
+
+```{r}
+total_richness <- rbind(
+  Kingdom = k_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Phylum = p_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Class = c_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Order = o_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Family = f_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Genus = g_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums(),
+  Species = s_richness %>% mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% colSums())
+  
+  total_richness <- total_richness %>% dfRowName("clade_name")
+  total_richness
+
+write_csv(total_richness, "RDataRDS/total_richness.csv" )
+saveRDS(total_richness, "RDataRDS/total_richness.rds" )
+```
+
+
+## Richness Bar chart
+```{r richness_bar, fig.height=10, fig.width=7, include=FALSE}
+richness_plot <- total_richness %>% reshape2::melt() %>% 
+  mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% 
+  filter(value > 0.0) %>%
+  ggplot(aes(x=reorder(variable, -value), y = value, fill = value), color=clade_name) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "\nSample", 
+    y = "Species Richness", 
+    fill = "Richness") +
+  theme(
+    axis.text = element_text(hjust = 0.1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  theme_bw() + 
+  coord_flip()
+richness_plot
+```
+
+```{r richness_bar_gif, echo=FALSE, fig.height=5, fig.width=7, animation.hook='gifski', interval=3, fig.path="./GIFS/"}
+richness_plot
+```
+
+```{r}
+# Richness R Objects
+save(
+  # taxon-level and total richness
+  k_richness, 
+  p_richness, 
+  c_richness, 
+  o_richness, 
+  f_richness, 
+  g_richness, 
+  s_richness, 
+  total_richness, 
+  richness_plot,
+
+  file = "RDataRDS/taxa_richness.RData" )
+
+```
+
+## Diversity index
+```{r fig.height=7, fig.width=5}
+# source("R/alpha.R")
+library(vegan)
+library(tidyverse)
+
+set.seed(2022)
+
+taxlevels <- readRDS("RDataRDS/taxlevels.rds")
+days_wanted <- c(0:9, 141:150)
+
+shared <- readRDS("RDataRDS/otu_taxa_abund.rds") %>%
+  select(-taxlevels) %>%
+  distinct(OTU, .keep_all = T) %>% 
+  mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% 
+  data.table::transpose(keep.names = "Group", make.names = "OTU") %>% 
+  pivot_longer(-Group) %>%
+  group_by(Group) %>%
+  mutate(total = sum(value)) %>%
+  filter(total > 1800) %>%
+  group_by(name) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+rand <- shared %>%
+  uncount(value) %>%
+  mutate(name = sample(name)) %>%
+  count(Group, name, name="value")
+
+richness <- function(x){
+  
+  # r <- sum(x > 0)
+  # return(r)
+  
+  sum(x>0)
+}
+
+shannon <- function(x){
+  
+  rabund <- x[x>0]/sum(x)
+  -sum(rabund * log(rabund))
+  
+}
+
+simpson <- function(x){
+  
+  n <- sum(x)
+  
+  # sum(x * (x-1) / (n * (n-1)))
+  1 - sum((x/n)^2)
+}
+
+library(vegan)
+rand %>%
+  group_by(Group) %>%
+  summarize(sobs = specnumber(value),
+            shannon = diversity(value, index="shannon"),
+            simpson = diversity(value, index="simpson"),
+            invsimpson = 1/simpson,
+            n = sum(value)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=4, scales="free_y") + xbreaks5
+
+```
+
+
+```{r}
+## Current saved objects
+resave(
+  # taxon-level and total richness
+  k_richness, 
+  p_richness, 
+  c_richness, 
+  o_richness, 
+  f_richness, 
+  g_richness, 
+  s_richness, 
+  total_richness,
+  richness_plot,
+  file = "RDataRDS/project6data.RData")
+
+load("RDataRDS/project6data.RData", verbose = T)
+
+```

@@ -1,0 +1,788 @@
+# (PART) DATA PREPARATION {-}
+
+# Prepare Data {#dataprep}
+
+## Import libraries and functions
+```{r warning=FALSE, include=FALSE}
+source("R/common.R")
+
+```
+
+
+## Import data
+- Merged abundance table
+- Sample metadata
+- Store data in RData format
+```{r, echo=TRUE}
+## Merged abundance
+path1 = "./marcusdata/merged_abundance_table.txt"
+merged_abundance_table <- read_delim(path1, skip = 1, show_col_types = FALSE)
+saveRDS(merged_abundance_table, "RDataRDS/merged_abundance_table.rds")
+
+## Metadata
+path2 = "./marcusdata/sample_metadata.csv"
+sample_metadata <- read_csv(path2, col_names = TRUE, show_col_types = FALSE)
+colnames(sample_metadata)[2]  <- "SampleID"
+colnames(sample_metadata)[3]  <- "cVar1"
+colnames(sample_metadata)[4]  <- "cVar2"
+colnames(sample_metadata)[5]  <- "cVar3"
+colnames(sample_metadata)[6]  <- "cVar4"
+colnames(sample_metadata)[7]  <- "cVar5"
+
+sample_metadata <- sample_metadata[-1]
+saveRDS(sample_metadata, "RDataRDS/sample_metadata.rds")
+# sample_metadata
+
+## Store original data in RData object
+save(merged_abundance_table, sample_metadata, file = "RDataRDS/original_data.RData")
+```
+
+## Definition of variables
+```{r}
+sample_metadata <- readRDS("RDataRDS/sample_metadata.rds")
+
+## Metadata for downstream analysis. Just selecting a few for convenience
+metadata <- sample_metadata %>% 
+  dplyr::select(SampleID, cVar1, cVar2, cVar3, cVar4, cVar5) %>%
+  drop_na()
+
+## Define data type for the selected variables
+metadata$cVar1 <- as.factor(metadata$cVar1)
+metadata$cVar2 <- as.factor(metadata$cVar2)
+metadata$cVar3 <- as.factor(metadata$cVar3)
+metadata$cVar4 <- as.character(metadata$cVar4)
+metadata$cVar5 <- as.factor(metadata$cVar5)
+
+variables <- metadata %>% colnames() %>% data.frame()
+colnames(variables)[1]  <- "Variable"
+
+vardefn <- c(
+  "Unique sample ID",
+  "Description of Variable 1",
+  "Description of Variable 2",
+  "Description of Variable 3",
+  "Description of Variable 4",
+  "Description of Variable 5")
+
+data_dict <- variables %>% mutate(Definition = vardefn)
+head(data_dict, 10)
+
+saveRDS(data_dict, "RDataRDS/data_dict.rds")
+```
+
+## Process metadata
+```{r}
+## Add unique sample mapping IDs
+tidy_metadata <- metadata %>% 
+  mutate(SampleID = paste("Sample",  seq(1:length(rownames(metadata))), sep = "_"))
+
+## View tidy metadata
+head(tidy_metadata)[1:5, 1:5]
+
+write_csv(tidy_metadata, "RDataRDS/tidy_metadata.csv" )
+saveRDS(tidy_metadata, "RDataRDS/tidy_metadata.rds" )
+
+```
+
+
+## Process Merged Abundance
+- Inspect associated sample names.
+- Reorganize the columns as necessary.
+- Split abundance at taxonomic level.
+- Merge metadata, taxonomy and abundance in single object.
+- Define data in the merged data.
+
+### Inspect associated sample names
+```{r}
+
+names(merged_abundance_table)
+
+```
+### Reorder columns and drop the unneeded (Optional)
+```{r}
+tidy_merged_abundance_table <- as.data.frame(merged_abundance_table) %>% 
+  relocate("15_Standard_OpARun1_S14_L001_R1_001.fastq.gz_metaphlan3_profile_100", .after = "NCBI_tax_id") %>% 
+  dplyr::select(!c(clade_taxid, NCBI_tax_id))
+
+names(tidy_merged_abundance_table)
+```
+
+### Match sample names to metadata
+```{r warning=FALSE}
+colnames(tidy_merged_abundance_table)[2:ncol(tidy_merged_abundance_table)] <- paste("Sample",  seq(1:ncol(tidy_merged_abundance_table)), sep = "_")
+```
+
+### Process Profiles With Counts
+```{r withcounts}
+
+require(data.table)
+require(tidyverse)
+
+path = "/Volumes/SeagateTMB/SYNTHETIC/microbes/data/*_profile.txt"
+files <- Sys.glob(file.path(path))
+files <- Sys.glob(path)
+  profile_w_counts <- data.frame(ModelName = character(), Object = character(), stringsAsFactors = FALSE)
+  profile_w_counts %>% mutate(Filename = "")
+  
+  for (i in 1:length(files)){
+    currentFile = read_delim(files[i], skip = 4, show_col_types = FALSE) %>% mutate(Filename = files[i])
+    profile_w_counts = rbind(profile_w_counts, currentFile)    
+  }
+
+for ( i in profile_w_counts$Filename) { 
+  profile_w_counts$Filename <- sub(".*/", "", profile_w_counts$Filename) }
+
+for ( i in profile_w_counts$Filename) { 
+  profile_w_counts$Filename <- sub(".fast.*", "", profile_w_counts$Filename) }
+
+for ( col in 1:ncol(profile_w_counts)) { colnames(profile_w_counts)[col] <- 
+  sub("estimated_number_of_reads_from_the_clade", 
+  "raw_abundance", colnames(profile_w_counts)[col]) }
+
+### Rename column one and drop clade_taxid
+colnames(profile_w_counts)[1] <- "clade_name"
+profile_w_counts_long <- profile_w_counts[, -2] 
+write_csv(profile_w_counts, "RDataRDS/profile_w_counts.csv")
+saveRDS(profile_w_counts, "RDataRDS/profile_w_counts.rds")
+
+## Split Taxon Lineage
+taxlevels <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+saveRDS(taxlevels,"RDataRDS/taxlevels.rds")
+
+### Raw abundnace
+raw_taxa_abundance <- profile_w_counts %>% 
+  dplyr::select(clade_name, raw_abundance, Filename) %>% 
+  pivot_wider(id_cols = NULL, 
+              names_from = Filename, 
+              names_repair = "check_unique", 
+              values_from = raw_abundance) %>% 
+  distinct() %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+  
+  write_csv(raw_taxa_abundance, "RDataRDS/raw_taxa_abundance.csv")
+  saveRDS(raw_taxa_abundance, "RDataRDS/raw_taxa_abundance.rds")
+  
+### Relative abundnace
+rel_taxa_abundance <- profile_w_counts %>% 
+  dplyr::select(clade_name, relative_abundance, Filename) %>% 
+  pivot_wider(id_cols = NULL, 
+              names_from = Filename, 
+              names_repair = "check_unique", 
+              values_from = relative_abundance) %>% 
+  distinct() %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+  
+  write_csv(rel_taxa_abundance, "RDataRDS/rel_taxa_abundance.csv")
+  saveRDS(rel_taxa_abundance, "RDataRDS/rel_taxa_abundance.rds")
+
+```
+```{r}
+## Create Sample Metadata
+# We will extract metadata from the simulated dataset.
+
+### File names as metadata
+
+if (!dir.exists("RDataRDS")) {dir.create("RDataRDS")}
+
+filepath = "/Volumes/SeagateTMB/SYNTHETIC/microbes/data/*.gz"
+# filepath = "/Volumes/SeagateTMB/SRA2022/data/*.fastq"
+
+list_of_files <- as.data.frame(Sys.glob(file.path(filepath)))
+colnames(list_of_files)[1] <- "Filename"
+
+for ( i in list_of_files$Filename) { 
+  list_of_files$Filename <- sub(".*/", "", list_of_files$Filename) }
+
+head(list_of_files)
+
+saveRDS(list_of_files, "RDataRDS/list_of_files.rds")
+
+###  Assign Sample IDs
+# Additional fields can be something like treatment, group or any independent variable linked to the sample. 
+
+library(data.table)
+library(tidyverse)
+
+samplemetadata <- readRDS("RDataRDS/list_of_files.rds")
+# samplemetadata <- samplemetadata %>% mutate(SampleID = paste("Sample", seq(1:dim(samplemetadata)[1]), 
+samplemetadata <- samplemetadata %>% mutate(SampleID = sub(".fast.*", "", samplemetadata$Filename), .before = "Filename")
+head(samplemetadata)
+
+### Assign new sample metadata
+# Here we assign two more fields; Read direction and sequencing platform. Since we are using a simulated dataset we will extract some info that relates to the sequence sources.
+
+# samplemetadata$Direction <- ifelse(samplemetadata$Filename %like% "R1", "Foward", "Reverse")
+samplemetadata$Direction <- ifelse(samplemetadata$Filename %like% "_R1", "Foward", "Reverse")
+samplemetadata$Group <- ifelse(seq_along(rownames(samplemetadata)) %% 2 != 0, "Group1", "Group2")
+samplemetadata$Platform[samplemetadata$Filename %like% "hiseq"] <- "HiSeq"
+samplemetadata$Platform[samplemetadata$Filename %like% "miseq"] <- "MiSeq"
+samplemetadata$Platform[samplemetadata$Filename %like% "novaseq"] <- "NovaSeq"
+
+head(samplemetadata)
+
+saveRDS(samplemetadata, "RDataRDS/samplemetadata.rds")
+
+```
+
+```{r}
+## Save modified files for downstream analysis
+write_csv(tidy_merged_abundance_table, "RDataRDS/tidy_merged_abundance_table.csv" )
+saveRDS(tidy_merged_abundance_table, "RDataRDS/tidy_merged_abundance_table.rds" )
+
+save(tidy_metadata, tidy_merged_abundance_table, raw_taxa_abundance, rel_taxa_abundance, file = "RDataRDS/tidy_data.RData")
+```
+
+
+# (PART) TAXA ABUNDANCE TABLES {-}
+
+# Create Taxa Abundance Tables {#taxa-abundance}
+
+## Import tidy abundance data
+```{r}
+tidy_merged_abundance_table <- readRDS("RDataRDS/raw_taxa_abundance.rds" )
+
+```
+
+## Kingdom Relative Abundance 
+```{r}
+df_kingdom <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("p__|c__|o__|f__|g__|s__", clade_name))
+
+colnames(df_kingdom)[1] <- "Kingdom"
+for ( i in df_kingdom$Kingdom) { df_kingdom$Kingdom <- sub(".*\\|", "", df_kingdom$Kingdom) }
+
+df_kingdom <- df_kingdom %>% distinct(Kingdom, .keep_all = T)
+df_kingdom[, 1:5]
+
+write_csv(df_kingdom, "RDataRDS/df_kingdom.csv" )
+saveRDS(df_kingdom, "RDataRDS/df_kingdom.rds" )
+
+```
+
+
+## Phylum Relative Abundance 
+```{r}
+df_phylum <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("c__|o__|f__|g__|s__", clade_name))
+
+colnames(df_phylum)[1] <- "Phylum"
+for ( i in df_phylum$Phylum) { df_phylum$Phylum <- sub(".*\\|", "", df_phylum$Phylum) }
+
+df_phylum <- df_phylum %>% 
+  distinct(Phylum, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__", Phylum))
+
+df_phylum[1:3, 1:5]
+
+write_csv(df_phylum, "RDataRDS/df_phylum.csv" )
+saveRDS(df_phylum, "RDataRDS/df_phylum.rds" )
+```
+
+
+## Class Relative Abundance 
+```{r}
+df_class <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("o__|f__|g__|s__", clade_name))
+
+colnames(df_class)[1] <- "Class"
+for ( i in df_class$Class) { df_class$Class <- sub(".*\\|", "", df_class$Class) }
+
+df_class <- df_class <- df_class %>% 
+  distinct(Class, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__|p__", Class))
+df_class[1:3, 1:5]
+
+write_csv(df_class, "RDataRDS/df_class.csv" )
+saveRDS(df_class, "RDataRDS/df_class.rds" )
+```
+
+
+## Order Relative Abundance 
+```{r}
+df_order <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("f__|g__|s__", clade_name))
+
+colnames(df_order)[1] <- "Order"
+for ( i in df_order$Order) { df_order$Order <- sub(".*\\|", "", df_order$Order) }
+
+df_order <- df_order <- df_order %>% 
+  distinct(Order, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__|p__|c__", Order))
+df_order[1:3, 1:5]
+
+write_csv(df_order, "RDataRDS/df_order.csv" )
+saveRDS(df_order, "RDataRDS/df_order.rds" )
+```
+
+
+## Family Relative Abundance 
+```{r}
+df_family <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("g__|s__", clade_name))
+
+colnames(df_family)[1] <- "Family"
+for ( i in df_family$Family) { df_family$Family <- sub(".*\\|", "", df_family$Family) }
+
+df_family <- df_family <- df_family %>% 
+  distinct(Family, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__|p__|c__|o__", Family))
+df_family[1:3, 1:5]
+
+write_csv(df_family, "RDataRDS/df_family.csv" )
+saveRDS(df_family, "RDataRDS/df_family.rds" )
+```
+
+
+## Genus Relative Abundance 
+```{r}
+df_genus <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(!grepl("s__", clade_name))
+
+colnames(df_genus)[1] <- "Genus"
+for ( i in df_genus$Genus) { df_genus$Genus <- sub(".*\\|", "", df_genus$Genus) }
+
+df_genus <- df_genus %>% 
+  distinct(Genus, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__|p__|c__|o__|f__", Genus))
+df_genus[1:3, 1:5]
+
+write_csv(df_genus, "RDataRDS/df_genus.csv" )
+saveRDS(df_genus, "RDataRDS/df_genus.rds" )
+```
+
+
+## Species Relative Abundance 
+```{r}
+df_species <- as.data.frame(tidy_merged_abundance_table) %>% 
+  dplyr::filter(grepl("s__", clade_name))
+
+colnames(df_species)[1] <- "Species"
+for ( i in df_species$Species) { df_species$Species <- sub(".*\\|", "", df_species$Species) }
+
+df_species <-df_species %>% 
+  distinct(Species, .keep_all = T) %>% 
+  dplyr::filter(!grepl("k__|p__|c__|o__|f__|__g", Species))
+df_species[1:3, 1:5]
+
+write_csv(df_species, "RDataRDS/df_species.csv" )
+saveRDS(df_species, "RDataRDS/df_species.rds" )
+```
+
+Save abundance Objects
+```{r}
+save(
+  df_kingdom, 
+  df_phylum, 
+  df_class, 
+  df_order, 
+  df_family, 
+  df_genus, 
+  df_species,
+  file = "RDataRDS/taxa_abund_tables.RData"
+)
+```
+
+# (PART) DATA MANIPULATION {-}
+# Split clade name
+
+## Import tidy data
+```{r}
+library(dplyr)
+library(tidyr)
+
+load("RDataRDS/tidy_data.RData", verbose = T )
+
+```
+
+## Taxa abundance table
+```{r}
+taxlevels <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+saveRDS(taxlevels, "RDataRDS/taxlevels.rds")
+
+# taxa_abund <- tidy_merged_abundance_table %>% 
+taxa_abund <- raw_taxa_abundance %>% 
+  dplyr::filter(grepl("s__", clade_name)) %>% 
+  separate(col = "clade_name", into = all_of(taxlevels), sep = "\\|") %>%
+  distinct(Species, .keep_all = T)
+
+head(taxa_abund)
+```
+
+
+## Add unique ID for mapping
+```{r}
+otu_taxa_abund <- taxa_abund %>% 
+  mutate(OTU = paste("OTU", seq(1:length(rownames(taxa_abund))), sep = "_"), .before = Kingdom) 
+head(otu_taxa_abund)
+
+write_csv(otu_taxa_abund, "RDataRDS/otu_taxa_abund.csv")
+saveRDS(otu_taxa_abund, "RDataRDS/otu_taxa_abund.rds")
+```
+
+
+## Taxa abundance long table
+```{r}
+otu_taxa_abund_long <- otu_taxa_abund %>% pivot_longer(-c(colnames(otu_taxa_abund[1:8])), names_to = "SampleID", values_to = "Abundance") %>% relocate(SampleID, .before = "OTU")
+head(otu_taxa_abund_long)
+```
+
+
+## Add metadata to long table
+- Here we use SampleID as a joiner
+
+```{r}
+metadata <- readRDS("RDataRDS/samplemetadata.rds")
+meta_otu_taxa_abund_long <- data.frame(inner_join(metadata, otu_taxa_abund_long, by="SampleID") %>% 
+  group_by(SampleID))
+head(meta_otu_taxa_abund_long, 10)
+
+write_csv(meta_otu_taxa_abund_long, "RDataRDS/meta_otu_taxa_abund_long.csv")
+saveRDS(meta_otu_taxa_abund_long, "RDataRDS/meta_otu_taxa_abund_long.rds")
+```
+
+
+## Save wide and long table objects in RData
+```{r}
+save(tidy_metadata, tidy_merged_abundance_table, file = "RDataRDS/tidy_data.RData" )
+save(otu_taxa_abund, meta_otu_taxa_abund_long, file = "RDataRDS/meta_otu_taxa_abund.RData")
+```
+
+
+# Subsets From the Long Table
+> The long table contains metadata, OTU ID, taxonomic levels and abundance data. We can extract these subsets for downstream analysis.
+
+## Import data
+```{r}
+load("RDataRDS/meta_otu_taxa_abund.RData", verbose = T)
+
+```
+
+```{r}
+head(meta_otu_taxa_abund_long)
+```
+
+## Metadata subsets
+
+### Extract raw metadata
+```{r}
+data <- meta_otu_taxa_abund_long
+metadata <- data[,colnames(metadata)] %>% 
+  distinct(SampleID, .keep_all = T)
+dim(metadata)
+cat("\n")
+head(metadata)[1:5, 1:5]
+
+write_csv(metadata, "RDataRDS/metadata.csv" )
+saveRDS(metadata, "RDataRDS/metadata.rds" )
+
+```
+
+### Extract phyloseq-like metadata
+
+```{r}
+metadata_4phyloseq <- data[,colnames(metadata)] %>% 
+  distinct(SampleID, .keep_all = T) %>% 
+  tibble::column_to_rownames("SampleID")
+dim(metadata_4phyloseq)
+cat("\n")
+head(metadata_4phyloseq)[1:5, ]
+
+write_csv(metadata_4phyloseq, "RDataRDS/metadata_4phyloseq.csv" )
+saveRDS(metadata_4phyloseq, "RDataRDS/metadata_4phyloseq.rds" )
+```
+
+### Extract lefse-like metadata
+```{r}
+metadata_4lefse <- data.table::transpose( data[,colnames(metadata)] %>% 
+  distinct(SampleID, .keep_all = T), keep.names = "Feature", make.names = "SampleID")
+dim(metadata_4lefse)
+cat("\n")
+head(metadata_4lefse)[, 1:5]
+
+write_csv(metadata_4lefse, "RDataRDS/metadata_4lefse.csv" )
+saveRDS(metadata_4lefse, "RDataRDS/metadata_4lefse.rds" )
+
+```
+
+```{r}
+save(metadata, metadata_4phyloseq, metadata_4lefse, file = "RDataRDS/metadata.RData")
+
+```
+
+
+### Extract taxonomy Levels
+- This table must contain column that links to the abundance/OTU table.
+```{r}
+taxlevels <- readRDS("RDataRDS/taxlevels.rds")
+taxonomy <- data %>%
+  dplyr::select(OTU, all_of(taxlevels)) %>% 
+  distinct() #%>% tibble::column_to_rownames("OTU")
+
+dim(taxonomy)
+cat("\n")
+taxonomy[1:5, 1:3]
+
+write_csv(taxonomy, "RDataRDS/taxonomy.csv")
+saveRDS(taxonomy, "RDataRDS/taxonomy.rds")
+```
+
+### Extract abundance table
+```{r}
+otutable <- data %>% 
+  select(SampleID, OTU, Abundance) %>% 
+  pivot_wider(id_cols = "OTU", names_from = "SampleID", values_from = "Abundance") #%>% tibble::column_to_rownames("OTU")
+dim(otutable)
+cat("\n")
+otutable[1:5, 1:5]
+
+write_csv(otutable, "RDataRDS/otutable.csv")
+saveRDS(otutable, "RDataRDS/otutable.rds")
+```
+
+# Inspect Processed Data
+
+## Metadata
+```{r}
+skimed_meta <- skimr::skim(metadata)
+skimed_meta
+# skimed %>% filter(n_missing > 0)
+```
+
+## Taxonomy
+```{r}
+skimed_tax <- skimr::skim(taxonomy)
+skimed_tax
+# skimed %>% filter(n_missing > 0)
+```
+
+## Abundances
+```{r}
+skimed_otu <- skimr::skim(otutable)
+skimed_otu
+# skimed %>% filter(n_missing > 0)
+```
+
+
+```{r}
+save(
+  # Data manipulation Objects
+  taxlevels, 
+  taxa_abund, 
+  otu_taxa_abund,
+  
+  # Merged data
+  meta_otu_taxa_abund_long, 
+  # meta_otu_taxa_abund_wide, 
+  
+  # Extracted from llong table
+  metadata, 
+  metadata_4phyloseq, 
+  metadata_4lefse, 
+  taxonomy,
+  otutable,
+  
+  # Inspect processed data
+  skimed_meta,
+  skimed_tax,
+  skimed_otu,
+  file = "RDataRDS/data_manipulation.RData"
+)
+```
+
+# Lefse Tables at Taxa-Level
+- Rows are features
+- Columns are samples
+- Combines metadata and abuncances.
+
+## Import data
+```{r}
+load("RDataRDS/taxa_abund_tables.RData", verbose = T)
+```
+
+
+## Kingdom lefse table
+```{r}
+k_4lefse <- df_kingdom %>% 
+  tibble::column_to_rownames("Kingdom") %>%  dfRowName("Feature")
+lefse_kingdom <- rbind(metadata_4lefse, k_4lefse)
+
+head(lefse_kingdom)
+
+write_csv(lefse_kingdom, "RDataRDS/lefse_kingdom.csv")
+saveRDS(lefse_kingdom, "RDataRDS/lefse_kingdom.rds")
+
+```
+
+## Phylum lefse table
+```{r}
+p_4lefse <- df_phylum %>% 
+  tibble::column_to_rownames("Phylum") %>%  dfRowName("Feature")
+lefse_phylum <- rbind(metadata_4lefse, p_4lefse)
+
+head(lefse_phylum)
+
+write_csv(lefse_phylum, "RDataRDS/lefse_phylum.csv")
+saveRDS(lefse_phylum, "RDataRDS/lefse_phylum.rds")
+
+```
+
+## Class lefse table
+```{r}
+c_4lefse <- df_class %>% 
+  tibble::column_to_rownames("Class") %>%  dfRowName("Feature")
+lefse_class <- rbind(metadata_4lefse, c_4lefse)
+
+head(lefse_class)
+
+write_csv(lefse_class, "RDataRDS/lefse_class.csv")
+saveRDS(lefse_class, "RDataRDS/lefse_class.rds")
+
+```
+
+## Order lefse table
+```{r}
+o_4lefse <- df_order %>% 
+  tibble::column_to_rownames("Order") %>%  dfRowName("Feature")
+lefse_order <- rbind(metadata_4lefse, o_4lefse)
+
+head(lefse_order)
+
+write_csv(lefse_order, "RDataRDS/lefse_order.csv")
+saveRDS(lefse_order, "RDataRDS/lefse_order.rds")
+
+```
+
+## Family lefse table
+```{r}
+f_4lefse <- df_family %>% 
+  tibble::column_to_rownames("Family") %>%  dfRowName("Feature")
+lefse_family <- rbind(metadata_4lefse, f_4lefse)
+
+head(lefse_family)
+
+write_csv(lefse_family, "RDataRDS/lefse_family.csv")
+saveRDS(lefse_family, "RDataRDS/lefse_family.rds")
+
+```
+
+## Genus lefse table
+```{r}
+g_4lefse <- df_genus %>% 
+  tibble::column_to_rownames("Genus") %>%  dfRowName("Feature")
+lefse_genus <- rbind(metadata_4lefse, g_4lefse)
+
+head(lefse_genus)
+
+write_csv(lefse_genus, "RDataRDS/lefse_genus.csv")
+saveRDS(lefse_genus, "RDataRDS/lefse_genus.rds")
+
+```
+
+## Species lefse table
+```{r}
+s_4lefse <- df_species %>% 
+  tibble::column_to_rownames("Species") %>%  dfRowName("Feature")
+lefse_species <- rbind(metadata_4lefse, s_4lefse)
+
+head(lefse_species)
+
+write_csv(lefse_species, "RDataRDS/lefse_species.csv")
+saveRDS(lefse_species, "RDataRDS/lefse_species.rds")
+
+```
+
+# (PART) PREPARE ML DATASETS
+```{r}
+# Cleaning data
+tidy_abund_longer <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/data-processing/process-m3abund/RDataRDS/df_class.rds") %>% 
+  data.table::transpose(keep.names = "SampleID", make.names = "Class") %>% 
+  distinct(SampleID, .keep_all = T) %>% 
+  mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% 
+  pivot_longer(-SampleID) %>%
+  group_by(SampleID) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  group_by(name) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total) 
+head(tidy_abund_longer)
+saveRDS(tidy_abund_longer, "RDataRDS/tidy_abund_longer.rds")
+
+
+# Preparing data for machine learning
+## Select target
+tidy_metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/data-processing/process-m3abund/RDataRDS/metadata.rds") %>% 
+  select(SampleID, Platform)
+
+# Merging data with target
+tidy_abund_wider <- tidy_abund_longer %>% 
+  pivot_wider(id_cols = "SampleID", names_from = name, values_from = value) %>% 
+  inner_join(tidy_metadata, by = "SampleID") %>% 
+  relocate(Platform, .before = SampleID) %>% 
+  select(-SampleID)
+head(tidy_abund_wider)
+saveRDS(tidy_abund_wider, "RDataRDS/tidy_abund_wider.rds")
+```
+
+
+## Current saved objects
+```{r}
+save(
+  # original data
+  merged_abundance_table,
+  sample_metadata,
+
+  # tidy original
+  tidy_merged_abundance_table,
+  tidy_metadata,
+
+  # taxon-level abundance
+  df_kingdom,
+  df_phylum,
+  df_class,
+  df_order,
+  df_family,
+  df_genus,
+  df_species,
+  
+  # Data manipulation Objects
+  taxlevels, 
+  taxa_abund, 
+  otu_taxa_abund,
+  
+  # Merged data
+  meta_otu_taxa_abund_long, 
+  
+  # Extracted from llong table
+  metadata, 
+  metadata_4phyloseq, 
+  metadata_4lefse, 
+  taxonomy,
+  otutable,
+  
+  # Inspect processed data
+  skimed_meta,
+  skimed_tax,
+  skimed_otu,
+  
+  # Taxon-level lefse tables
+  lefse_kingdom,
+  lefse_phylum,
+  lefse_class,
+  lefse_order,
+  lefse_family,
+  lefse_genus,
+  lefse_species,
+
+  file = "RDataRDS/project6data.RData")
+
+load("RDataRDS/project6data.RData", verbose = T)
+
+```
+
+
+

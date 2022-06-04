@@ -119,7 +119,8 @@ nolegend <- theme(legend.position="none")
 
 ## Center Plot title
 centertitle <- theme(plot.title = element_text(hjust = 0.5)) +
-  theme(plot.subtitle = element_text(hjust = 0.5))
+  theme(plot.subtitle = element_text(hjust = 0.5)) + 
+  theme(axis.title=element_text(size=14,face="bold"))
 
 facetsize14 <- theme(strip.text.x = element_text(size = 14, colour = "black", angle = 0))
 facetsize12 <- theme(strip.text.x = element_text(size = 12, colour = "black", angle = 0))

@@ -1,6 +1,6 @@
 ---
-title: "PART4...In Progress..."
-subtitle: "End-to-End Practical User Guides"
+title: "Exploratory Analysis of Microbiome Data in R"
+subtitle: "End-to-End Practical User Guides for Microbiome Data Analysis"
 author: "Teresia Mrema-Buza, A Microbiome Data Science Enthusiast and Owner of the Complex Data Insights, LLC, USA"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
@@ -9,7 +9,7 @@ output:
   bookdown::bs4_book:
     includes:
       in_header:
-    template: bs4_part4_template.html
+    template: bs4_part3_template.html
 documentclass: book
 classoption: openany #remove empty pages in pdf doc
 colorlinks: true
@@ -41,7 +41,7 @@ source(file = "R/common.R")
 if (!dir.exists("data")) {dir.create("data")}
 ```
 
-# PART4 ...In Progress... {-#frontpage}
+# Exploratory Analysis of Microbiome Data {-#frontpage}
 
 ```{r include=FALSE}
 library(DiagrammeR)
@@ -49,50 +49,46 @@ library(DiagrammeRsvg)
 
 graph <- DiagrammeR::grViz("
 digraph {
-graph [layout = dot, rankdir = LR]
+graph [layout = dot, rankdir = TD]
 
-node [shape = rectangle, style = filled, fillcolor = white]
+node [
+shape = box, 
+style = filled, 
+fillcolor = white, 
+fontname = Helvetica,
+penwidth = 2.0] 
 
-A [label = 'Clean Data', shape = folder, fillcolor = grey]
-B [label = 'Training \n Set', shape = folder, fillcolor = grey]
-C [label = 'Testing \n Set', shape = folder, fillcolor = grey]
-D [label = 'Model \nTraining Subset\n(X-Train)']
-E [label = 'Validation Subset\n(y_Train)']
-F [label = 'Better Feature \nSelection']
-G [label = 'Retrain \nModel']
-H [label = 'Best Feature \nSelection']
-I [label = 'Validated \nFeatures']
-J [label = 'Best Performing \nModel', shape = rectangle]
-K [label = 'Predict \nTest Set Labels', shape = rectangle]
-L [label = 'Compare Known \nwith Predicted', shape = rectangle]
-M [label = 'Cross \nValidation', shape = rectangle]
-N [label = 'Model \nImprovement', shape = rectangle]
+edge [arrowhead = diamond]
 
-{A}  -> B
-{A}  -> C
+A [label = 'EXPLORATORY \nANALYSIS OF \nMICROBIOME DATA', fillcolor = white, penwidth = 5.0]
+B [label = 'Preprocesed\nTidy Data']
+C [label = 'Metadata']
+D [label = 'OTU Table']
+E [label = 'Taxonomy Table']
+F [label = 'Composite Object']
+G [label = 'Data\nTansformation']
+H [label = 'Preliminary\nVisualization']
+I [label = 'Deeper \nInsights...', fillcolor = yellow, penwidth = 2.0]
+
+{A}  -> B [label = '  Input Data']
+{B}  -> C
 {B}  -> D
 {B}  -> E
+{C}  -> F
 {D}  -> F
+{E}  -> F
 {F}  -> G
-{G}  -> D
+{F}  -> H
 {G}  -> H
-{H}  -> E
-{E}  -> I
-{I}  -> J
-{J}  -> C
-{C}  -> K
-{K}  -> L
-{L}  -> M
-{M}  -> N
+{G}  -> I
 
 
-
-}", height = 1000, width = 600)
+}", height = 500, width = 500)
 
 # 2. Convert to SVG, then save as png
-part4_flow = DiagrammeRsvg::export_svg(graph)
-part4_flow = charToRaw(part4_flow) # flatten
-rsvg::rsvg_png(part4_flow, "img/part4_flow.png")
+part3_flow = DiagrammeRsvg::export_svg(graph)
+part3_flow = charToRaw(part3_flow) # flatten
+rsvg::rsvg_png(part3_flow, "img/part3_flow.png")
 ```
 
 
@@ -105,4 +101,4 @@ Investigating the role of microbial communities in health and disease requires a
 This guide is divided into chapters to facilitate easy navigation. Each chapter contains several sections as displayed in the navigation bars on the left and right. Click the hyper-linked text if you want to jump into a specific chapter or section.
 
 ## Code availability {-}
-The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part4/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part4/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
+The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part3/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part3/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 

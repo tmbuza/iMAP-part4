@@ -1,0 +1,601 @@
+# (PART) TASK 2: 3-5 BETA DIVERSITY {-}
+
+# Clustering and Ordination
+## Data Transformation of relative abundance
+Note that we have relative abundance not raw abundance. This compositional data need to be transformed with special methods such as inverse hyperbolic sine (asinh) or the arcsine transformation as suggested [@Gloor2017]
+
+### Import libraries and function
+```{r}
+source("R/common.R")
+```
+
+### Import and preprocess data
+```{r}
+# Using species-level abundances
+metadata <- readRDS("RDataRDS/metadata.rds")
+species <- readRDS("RDataRDS/df_species.rds")
+species[1:5, 1:4]
+
+# Create matrix
+df_species_mat <-species  %>% 
+	tibble::column_to_rownames("Species")
+
+# Convert NAs to zeros
+df_species_mat <- df_species_mat %>% 
+	mutate_all(~replace(., is.na(.), 0))
+```
+
+### Arc sine (asin) transformation
+```{r}
+x <- df_species_mat
+y <- x/max(x)
+df_asin <- round(asin(y), 6)
+df_asin <- as.matrix(df_asin)
+saveRDS(df_asin, "RDataRDS/df_asin.rds")
+
+df_asin[1:5, 1:4]
+
+```
+
+### Compute Distance between samples
+- Here we use vegdist function on arcsine transformed data.
+- There are other functions out there.
+
+### Bray-Curtis Dissimilarities
+```{r}
+bray_species_dist <- vegan::vegdist(t(df_asin), method = "bray")
+bray_species_dist[is.na(bray_species_dist)] = 0
+as.matrix(bray_species_dist)[1:5, 1:5]
+
+saveRDS(bray_species_dist, file = "RDataRDS/bray_species_dist.rds")
+
+```
+
+
+### Aitchison Distance
+- Requires count data which we do not have.
+
+# Hierarchical Clustering
+## Using hclust() function in stats package
+- Using Bray-Curtis (dis)similarities
+- Using average agglomeration method
+- Leaves colored by selected variable
+
+### Colored by Group variable
+```{r}
+bray_species_dist <- readRDS("RDataRDS/bray_species_dist.rds")
+metadata <- readRDS("RDataRDS/metadata.rds")
+
+library(dendextend)
+dendro <- as.dendrogram(hclust(d = bray_species_dist, method = "average"))
+color <- c(Group1= "red", Group2 = "blue")
+labels_colors(dendro, labels =T) <- color[metadata$Group][order.dendrogram(dendro)]
+
+plot(dendro)
+```
+
+### Colored by Platform variable
+```{r}
+bray_species_dist <- readRDS("RDataRDS/bray_species_dist.rds")
+metadata <- readRDS("RDataRDS/metadata.rds")
+
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c(HiSeq = "red", MiSeq = "blue", NovaSeq = "magenta")
+labels_colors(dendro, labels =T) <- color[metadata$Platform][order.dendrogram(dendro)]
+
+plot(dendro)
+
+```
+
+### Colored by Group variable
+```{r}
+bray_species_dist <- readRDS("RDataRDS/bray_species_dist.rds")
+metadata <- readRDS("RDataRDS/metadata.rds")
+
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c(Group1 = "red", Group2 = "blue")
+labels_colors(dendro, labels =T) <- color[metadata$Group][order.dendrogram(dendro)]
+
+plot(dendro)
+unique(metadata$Group)
+```
+
+### Colored by cVar4 variable
+```{r}
+bray_species_dist <- readRDS("RDataRDS/bray_species_dist.rds")
+metadata <- readRDS("RDataRDS/metadata.rds")
+
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c(HiSeq = "red", MiSeq = "blue", NovaSeq = "magenta")
+labels_colors(dendro, labels =T) <- color[metadata$Platform][order.dendrogram(dendro)]
+
+plot(dendro)
+```
+
+```{r}
+## Using fviz_dend() function in factoextra package
+
+library(factoextra)
+fviz_dend(x = dendro,
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE)
+
+fviz_dend(x = dendro, 
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE, 
+          phylo_layout = "layout_with_drl")
+
+fviz_dend(x = dendro,
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE, 
+          phylo_layout = "layout_as_tree")
+
+fviz_dend(x = dendro, 
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE, 
+          phylo_layout = "layout.gem")
+
+fviz_dend(x = dendro, 
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE, 
+          phylo_layout = "layout.mds")
+
+fviz_dend(x = dendro, 
+          cex = 0.8, 
+          lwd = 0.8, 
+          k = 4,
+          rect = TRUE,
+          k_colors = "jco",
+          rect_border = "jco",
+          rect_fill = TRUE,
+          type = "phylogenic",
+          repel = TRUE, 
+          phylo_layout = "layout_with_lgl")
+
+
+```
+
+```{r eval=FALSE, include=FALSE}
+library(ggdendro)
+
+library(ggtree)
+
+
+## Using ggtree
+# * ggtree is a phylogenetic tree viewer for different types of tree annotations
+# * Ref 1: [ggtree](https://www.bioconductor.org/packages/3.7/bioc/vignettes/ggtree/inst/doc/treeManipulation.html#internal-node-number)
+# * Ref 2: [annotate](https://www.bioconductor.org/packages/3.7/bioc/vignettes/ggtree/inst/doc/treeAnnotation.html)
+# * Ref 3: [Paper](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12628)
+# 
+# ### ggtree layout	
+# * rectangular
+# * slanted
+# * fan
+# * circular
+# * radial
+# * equal_angle
+# * daylight
+
+
+library(ggtree)
+
+set.seed(110912)
+
+# Get the tree
+nwktree <- read.tree("~/Dropbox/GITHUB_REPOs/tmbuza/iMAP/data/mothur/phylogeny/qced.trim.contigs.good.unique.good.filter.unique.precluster.pick.pick.pick.phylip.taxonomy.tre")
+# head(nwk)
+nwk_phylogeny <- read.tree("~/Dropbox/GITHUB_REPOs/tmbuza/iMAP/data/mothur/phylogeny/qced.trim.contigs.good.unique.good.filter.unique.precluster.pick.pick.pick.phylip.tre")
+
+# head(tree_phylip)
+### Get internal node number
+ # * set the *branch.length = “none”* to turn the tree to cladogram 
+
+# View internal node numbers
+ggtree(nwktree, layout = "rectangular", branch.length = "NONE", ladderize = TRUE, right = FALSE) + geom_text2(aes(subset=!isTip, label=node), hjust=-.8) + geom_tiplab(size=2)
+
+### Add clade labels
+
+p0 <- ggtree(nwktree)
+p0 + geom_cladelabel(node=10, label=10) + geom_cladelabel(node=12, label=12)
+
+### View Clade number 
+viewClade(p0 + geom_tiplab(size = 2), node=c(9))
+
+
+```
+
+
+> Hypothetically, the composition of these samples differ based on the Bray-Curtis dissimilarities. The difference can be explored further using ordination (next section).
+
+
+# PCA Ordination
+- Principal Component Analysis (PCA)
+- All variables are scaled to unit variance before the analysis.
+
+## Compute components
+- Using *prcomp()* function from vegan
+```{r}
+pca <- prcomp(bray_species_dist, scale. = TRUE)
+head(pca$rotation)[1:5, 1:5]
+```
+
+## Tabulate explained variance
+```{r}
+pca_variance <- data.frame(PC = paste("PC",  seq(1:nrow(metadata)), sep = ""), 
+                           ExplainedVar = round(pca$sdev^2/sum(pca$sdev^2), 4))
+pca_variance
+```
+
+## Plot screeplot
+```{r}
+pca_variance %>%
+  mutate(PC = factor(pca_variance$PC, levels = gtools::mixedsort(pca_variance$PC))) %>% 
+  ggplot(aes(x = PC, y = ExplainedVar)) +
+  geom_col(fill = "#4682b4") +
+  xlab("Principal Component") +
+  ylab("Variance Explained") +
+  ggtitle("PCA Scree Plot") +
+  ylim(0, 1) + centertitle +
+  theme(axis.text = element_text(size = 10))
+```
+
+## Tabulate variance explained
+```{r}
+library(dplyr)
+var_explained <- round(pca$sdev^2 / sum(pca$sdev^2),4)* 100
+var_explained <- data.frame(var_explained) %>% 
+  mutate(PC = colnames(as.matrix(pca$x))) %>% 
+  relocate(PC, .before = var_explained)
+var_explained
+```
+
+## Extract PC Info of two PCs
+```{r}
+pca_1_2 <- data.frame(PC1 = pca$x[,1], PC2 = pca$x[,2]) %>% dfRowName("SampleID")
+head(pca_1_2)
+```
+
+## Add metadata to PC info
+```{r}
+pca_1_2_meta <- inner_join(metadata, pca_1_2, by = "SampleID")
+head(pca_1_2_meta)
+```
+
+## Color by selected variables
+```{r}
+ggplot(pca_1_2_meta, aes(x = PC1, y = PC2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "Principal Component by Group") +
+  theme(legend.position = "right")
+
+
+ggplot(pca_1_2_meta, aes(x = PC1, y = PC2, color = Platform)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "Principal Component Platform") +
+  theme(legend.position = "right")
+
+
+ggplot(pca_1_2_meta, aes(x = PC1, y = PC2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "Principal Component Group") +
+  theme(legend.position = "right")
+
+
+p <- ggplot(pca_1_2_meta, aes(x = PC1, y = PC2, color = Direction)) +
+  geom_point(aes(shape = Platform), size = 3)
+
+p_pca = p + 
+  labs(
+    color = "Direction",
+    shape = "Platform",
+    title = "PCA with Bray-Curtis",
+    subtitle = "Using prcomp() function in vegan") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold")) +
+  centertitle
+p_pca
+
+
+```
+
+
+```{r}
+### Using RDA in vegan package
+
+rda <- rda(t(species[, -1]))
+rda
+
+# scree plot
+screeplot(rda, bstick = F, type = "line", col = "blue", lty = 1, main = "PCA Scree plot")
+
+### Display sites or samples
+biplot(rda, display = "sites")
+
+### Display species
+biplot(rda, display = "species")
+
+### Display both sites and species
+biplot(rda, 
+       display = c("sites", "species"),
+       type = c("text","text"))
+
+### Extract info of two componemts
+rda_1_2 <- data.frame(PC1 = rda$Ybar[,1], PC2 = rda$Ybar[,2]) %>% dfRowName("SampleID")
+head(rda_1_2)
+
+### Add metadata to PC info
+rda_1_2_meta <- inner_join(metadata, rda_1_2, by = "SampleID")
+head(rda_1_2_meta)
+
+# Color by selected variables
+ggplot(rda_1_2_meta, aes(x = PC1, y = PC2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "Principal Component by Group") +
+  theme(legend.position = "right")
+
+
+ggplot(rda_1_2_meta, aes(x = PC1, y = PC2, color = Platform)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "Principal Component Platform") +
+  theme(legend.position = "right")
+
+
+ggplot(rda_1_2_meta, aes(x = PC1, y = PC2, color = Platform)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "Principal Component Platform") +
+  theme(legend.position = "right")
+
+
+p <- ggplot(rda_1_2_meta, aes(x = PC1, y = PC2, color = Direction)) +
+  geom_point(aes(shape = Platform), size = 3)
+
+p_rda = p + 
+  labs(
+    color = "Direction",
+    shape = "Platform",
+    title = "RDA (PCA) with Bray-Curtis",
+    subtitle = "Using rda() function in vegan") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold")) +
+  centertitle
+p_rda
+
+```
+
+# PCoA Ordination
+- Principal Coordinate Analysis (PCoA)
+- PCoA is Classical Metric Multidimensional Scaling (MDS)
+- All variables are scaled to unit variance before the analysis
+- Using *cmdscale()* function in stats package
+
+## Compute coordinates
+```{r}
+pcoa <- cmdscale(bray_species_dist, k = (nrow(metadata) - 1), eig = TRUE)
+
+```
+
+## Tabulate explained variance
+```{r}
+pcoa_variance <- data.frame(PCO = paste("PCO",  seq(1:nrow(metadata)), sep = ""), 
+                           ExplainedVar = round(pcoa$eig^2/sum(pcoa$eig^2), 4))
+
+pcoa_variance
+```
+
+## Plot screeplot
+```{r}
+pcoa_variance %>%
+  mutate(PCO = factor(pcoa_variance$PCO, levels = gtools::mixedsort(pcoa_variance$PCO))) %>% 
+  ggplot(aes(x = PCO, y = ExplainedVar)) +
+  geom_col(fill = "#4682b4") +
+  xlab("Principal Coordinate") +
+  ylab("Variance Explained") +
+  ggtitle("PCoA Scree Plot") +
+  ylim(0, 1) + centertitle +
+  theme(axis.text = element_text(size = 7)) + smallaxislayout
+```
+
+## Create data frame of scores of two PCOs
+```{r}
+pcoa1_2 <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% dfRowName("SampleID")
+head(pcoa1_2)
+```
+
+## Add metadata to PC info
+```{r}
+pcoa_1_2_meta <- inner_join(metadata, pcoa1_2, by = "SampleID")
+head(pcoa_1_2_meta)
+```
+
+## Color by selected variables
+```{r}
+ggplot(pcoa_1_2_meta, aes(x = PCO1, y = PCO2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "Principal Component by Group") +
+  theme(legend.position = "right")
+
+
+ggplot(pcoa_1_2_meta, aes(x = PCO1, y = PCO2, color = Platform)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "Principal Component Platform") +
+  theme(legend.position = "right")
+
+
+ggplot(pcoa_1_2_meta, aes(x = PCO1, y = PCO2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "Principal Component Group") +
+  theme(legend.position = "right")
+
+
+p <- ggplot(pcoa_1_2_meta, aes(x = PCO1, y = PCO2, color = Direction)) +
+  geom_point(aes(shape = Platform), size = 3)
+
+p_pcoa = p + 
+  labs(
+    color = "Direction",
+    shape = "Platform",
+    title = "PCoA with Bray-Curtis",
+    subtitle = "Using cmdscale() function in stats package") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold")) +
+  centertitle
+p_pcoa
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+## Explained Variance
+# - Side-by-side PCA and PCoA comparison
+
+pca_pcoa_variance <- cbind(pca_variance, pcoa_variance[,-1])
+colnames(pca_pcoa_variance) <- c("PC", "PCA_Var", "PCoA_Var")
+pca_pcoa_variance
+
+saveRDS(pca_pcoa_variance, "RDataRDS/pca_pcoa_variance.rds")
+```
+
+# NMDS Ordination
+
+## Compute NMDS
+- Using *metaMDS()* from vegan package
+```{r}
+set.seed(2022)
+nmds <- metaMDS(t(species[,-1]),  k = (nrow(metadata))-1, try = 20, trymax = 20)
+```
+
+## Multidimensional Scaling summary
+```{r}
+(nmds)
+
+```
+
+## Plot stressplot
+```{r}
+stressplot(nmds)
+```
+
+## Create data frame of scores of two PCs
+```{r}
+nmds1_2 <- data.frame(NMDS1 = nmds$points[,1], NMDS2 = nmds$points[,2]) %>% dfRowName("SampleID")
+head(nmds1_2)
+```
+
+## Add metadata to PC info
+```{r}
+nmds1_2_meta <- inner_join(metadata, nmds1_2, by = "SampleID")
+head(nmds1_2_meta)
+```
+
+## Color by selected variables
+```{r}
+ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "NMDS by Variable 1") +
+  theme(legend.position = "right")
+
+
+ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = Platform)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Platform", 
+             title = "NMDS by Variable 2") +
+  theme(legend.position = "right")
+
+
+ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = Group)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Group", 
+             title = "NMDS by Variable 3") +
+  theme(legend.position = "right")
+
+
+ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = Direction)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "Direction", 
+             title = "NMDS by Variable 4") +
+  theme(legend.position = "right")
+
+p <- ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = Direction)) +
+  geom_point(aes(shape = "Platform"), size = 3)
+
+p_nmds = p + 
+  labs(
+    color = "Direction",
+    shape = "Platform",
+    subtitle = "Using metaMDS() function vegan") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold")) +
+  centertitle
+p_nmds
+
+```
+
+```{r eval=FALSE, fig.height=10, fig.width=10, include=FALSE}
+library(ggpubr)
+ggpubr::ggarrange(p_pca, 
+                  p_rda, 
+                  p_pcoa, 
+                  p_nmds, 
+                  common.legend = T, 
+                  legend = "bottom")
+
+```
+

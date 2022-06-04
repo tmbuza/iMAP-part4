@@ -1,0 +1,87 @@
+# (PART) DATA PREPARATION {-}
+
+# Prepare Data {#dataprep}
+
+## Import libraries and functions
+```{r warning=FALSE, include=FALSE}
+source("R/common.R")
+library(tidyverse)
+
+```
+
+## Metadata mimicked from input files
+```{r}
+filepath = "/Volumes/SeagateTMB/SYNTHETIC/microbes/data/*.gz"
+
+metadata <- as.data.frame(Sys.glob(file.path(filepath))) %>%
+  rename(sample_id = colnames(.)[1]) %>%
+  mutate(sample_id = tolower(sample_id),
+         sample_id = str_replace_all(sample_id, ".*/", ""),
+         sample_id = str_replace_all(sample_id, "\\.fastq.gz", ""),
+         direction = ifelse(str_detect(sample_id, ".*_r1"), "foward", "reverse"), 
+         group = ifelse(seq_along(rownames(.)) %% 2 != 0, "female", "male"),
+         platform = ifelse(str_detect(sample_id, "novaseq"), "novaseq", "mihiseq"))
+metadata  
+
+
+path1 = "/Volumes/SeagateTMB/SYNTHETIC/microbes/metaphlan3_profiles/merged_abundance_table.txt"
+taxlevels <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+
+taxonomy <- read_delim(path1, skip = 1, show_col_types = FALSE) %>% 
+  rename_all(tolower) %>% 
+  rename(taxonomy = clade_name) %>% 
+  select(-clade_taxid) %>% 
+  filter(grepl("s__", taxonomy)) %>% 
+  mutate(otu = paste("Otu", seq(1:length(rownames(.))), sep = ""), .before = taxonomy) %>% 
+  select(otu, taxonomy)  %>% 
+  separate(taxonomy, into = all_of(taxlevels), sep = "\\|") 
+
+taxonomy
+
+
+abund_table <- read_delim(path1, skip = 1, show_col_types = FALSE) %>% 
+  rename_all(tolower) %>% 
+  rename(taxonomy = clade_name) %>% 
+  select(-clade_taxid) %>% 
+  filter(grepl("s__", taxonomy)) %>% 
+  mutate(otu = paste("Otu", seq(1:length(rownames(.))), sep = ""), .before = taxonomy) %>% 
+  select(-taxonomy) %>%
+  pivot_longer(-otu, names_to = "sample_id", values_to = "rel_abund") %>% 
+  mutate(sample_id = str_replace_all(sample_id, "\\.fastq.gz_metaphlan3_profile", "")) %>% 
+  pivot_wider(id_cols = otu, names_from = "sample_id", values_from = "rel_abund")
+abund_table
+```
+
+
+
+## Merged abundance table
+- Contains relative abundances across samples
+```{r}
+path1 = "/Volumes/SeagateTMB/SYNTHETIC/microbes/metaphlan3_profiles/merged_abundance_table.txt"
+taxlevels <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+
+m3_rel_composite <- read_delim(path1, skip = 1, show_col_types = FALSE) %>% 
+  rename_all(tolower) %>% 
+  rename(taxonomy = clade_name) %>% 
+  select(-clade_taxid) %>% 
+  filter(grepl("s__", taxonomy)) %>% 
+  mutate(otu = paste("Otu", seq(1:length(rownames(.))), sep = ""), .before = taxonomy)  %>% 
+  separate(taxonomy, into = all_of(taxlevels), sep = "\\|") %>%
+  pivot_longer(-c(all_of(taxlevels), otu), names_to = "sample_id", values_to = "rel_abund") %>% 
+  mutate(sample_id = str_replace_all(sample_id, "\\.fastq.gz_metaphlan3_profile", "")) %>% 
+  pivot_longer(c(all_of(taxlevels), otu), names_to = "level", values_to = "taxon") %>%
+  inner_join(metadata, ., by = "sample_id") %>% 
+  relocate(rel_abund, .after = taxon) %>% 
+  group_by(sample_id) %>%
+  mutate(total = sum(rel_abund)) %>%
+  filter(total != 0) %>%
+  group_by(taxon) %>%
+  mutate(total = sum(rel_abund)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+m3_rel_composite
+
+saveRDS(m3_rel_composite, "RDataRDS/m3_rel_composite.rds")
+```

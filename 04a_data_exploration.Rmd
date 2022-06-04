@@ -1,0 +1,116 @@
+# (PART) EXPLORATORY ANALYSIS {-}
+
+# Exploratory Analysis of Preprocessed Data {#explore-data}
+
+## Prerequisite
+- Data objects containing metadata, abundance and taxonomy such as **R and phyloseq objects** prepared in previous section.
+- Analysis and visualization tools
+
+## Load libraries and data
+```{r}
+source("R/common.R")
+library(phyloseq)
+library(metagMisc)
+library(microbiome)
+library(microViz)
+
+load("../iMAP_part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+Let's use phyloseq object created from `mothur` output. 
+
+```{r}
+(ps <- ps_mo_raw)
+```
+
+
+## Number of taxa
+```{r}
+ntaxa(ps)
+```
+
+## Splitting taxon
+```{r}
+phyloseq_sep_tax(ps, TaxRank = "kingdom", drop_NA = FALSE)
+
+```
+
+
+## Number of samples
+```{r}
+nsamples(ps)
+```
+
+## Sample names
+```{r}
+sample_names(ps)
+```
+
+## Rank names
+```{r}
+rank_names(ps)
+```
+
+## Sample variables
+```{r}
+sample_variables(ps)
+```
+
+## Abundance table
+```{r}
+otu_table(ps)[1:10, 1:5]
+```
+
+## Taxonomy table
+```{r}
+tax_table(ps)[1:5, 1:3]
+```
+
+Phylogenetic tree
+```{r}
+phy_tree(ps)
+```
+
+## Taxa names
+```{r}
+taxa_names(ps)[1:5]
+```
+
+## Characteristics of this data
+- Using the `microbiome` R package.
+```{r message=FALSE, warning=FALSE}
+library(microbiome)
+microbiome::summarize_phyloseq(ps)
+
+```
+
+> Is the data composiosional? Find out fron the first line of the output from tbe previous command.
+
+## Sort samples by abundance
+
+> Sorting samples helps in sub-sampling.
+
+```{r}
+sort(phyloseq::sample_sums(ps), decreasing = F)
+```
+
+## Drop samples below a threshold
+```{r}
+ps2000 <- phyloseq::subset_samples(ps, phyloseq::sample_sums(ps) > 2000)
+ps2000
+```
+
+## Drop taxa below a threshold
+```{r}
+pstaxa10 <- phyloseq::prune_taxa(phyloseq::taxa_sums(ps) > 10, ps)
+pstaxa10
+```
+
+> Check if by dropping data below a specified threshold retained all sample. Adjust the threshold for desired output.
+
+## Explore Sample Data Attributes
+```{r}
+ps %>% sample_data %>% dplyr::count(isolate)
+
+```
+

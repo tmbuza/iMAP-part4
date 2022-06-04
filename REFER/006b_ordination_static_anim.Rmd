@@ -1,0 +1,331 @@
+# (PART) ORDINATION EXPLORATION{-}
+
+# Ordination of Abundance Data
+
+```{r include=FALSE}
+library(vegan)
+library(ape)
+library(dplyr)
+library(microViz)
+
+source("R/common.R")
+```
+
+## Import count data
+```{r}
+ps <- readRDS("RDataRDS/ps_raw.rds") %>% tax_fix() %>% phyloseq_validate()
+ps
+
+cat("\n\n")
+# head
+head(otu_table(ps))
+```
+
+## Interactive ordination
+```{block, type="tmbalert", echo=T}
+### Requirement
+- Package: microViz.
+- Data: Phyloseq object.
+
+### Load example data. microViz uses data from the corncob package
+ps <- corncob::ibd_phylo %>% tax_fix() %>% phyloseq_validate()
+
+### Then open the app to interact
+ord_explore(ps)
+
+Reference: https://github.com/david-barnett/microViz
+```
+
+
+## Static Ordination
+```{r}
+
+```
+
+
+### PCA: Principal component analysis
+```{r PCA_ord}
+## Phylum-level
+
+p_pca_ord <- ps %>%
+ tax_transform(rank = "Phylum", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+p_pca_ord +
+    theme_bw()
+
+## Class-level
+c_pca_ord <- ps %>%
+ tax_transform(rank = "Class", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+c_pca_ord +
+    theme_bw()
+
+## Order-level
+o_pca_ord <- ps %>%
+ tax_transform(rank = "Order", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+o_pca_ord +
+    theme_bw()
+
+## Family-level
+f_pca_ord <- ps %>%
+ tax_transform(rank = "Family", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+f_pca_ord +
+    theme_bw()
+  
+## Genus-level
+g_pca_ord <- ps %>%
+ tax_transform(rank = "Genus", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Genus-level NMDS")
+g_pca_ord +
+    theme_bw()
+  
+## Species-level
+s_pca_ord <- ps %>%
+ tax_transform(rank = "Species", trans = "identity") %>%
+ ord_calc(method = "PCA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Species-level PCA")
+s_pca_ord +
+    theme_bw()
+
+```
+
+### PCoA: Principal Coordinate Analysis
+```{r PCoA_ord}
+## Phylum-level
+p_pcoa_ord <- ps %>%
+ tax_transform(rank = "Phylum", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+p_pcoa_ord +
+    theme_bw()
+
+## Class-level
+c_pcoa_ord <- ps %>%
+ tax_transform(rank = "Class", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+c_pcoa_ord +
+    theme_bw()
+
+## Order-level
+o_pcoa_ord <- ps %>%
+ tax_transform(rank = "Order", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+o_pcoa_ord +
+    theme_bw()
+
+## Family-level
+f_pcoa_ord <- ps %>%
+ tax_transform(rank = "Family", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+f_pcoa_ord +
+    theme_bw()
+  
+## Genus-level
+g_pcoa_ord <- ps %>%
+ tax_transform(rank = "Genus", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Genus-levell PCoA")
+g_pcoa_ord +
+    theme_bw()
+  
+## Species-level
+s_pcoa_ord <- ps %>%
+ tax_transform(rank = "Species", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "PCoA") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Species-level PCoA")
+s_pcoa_ord +
+    theme_bw()
+
+```
+
+### NMDS: Non-Metric Multidimensional Scaling
+```{r NMDS_ord}
+## Phylum-level
+p_nmds_ord <- ps %>%
+ tax_transform(rank = "Phylum", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+p_nmds_ord +
+    theme_bw()
+
+## Class-level
+c_nmds_ord <- ps %>%
+ tax_transform(rank = "Class", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+c_nmds_ord +
+    theme_bw()
+
+## Order-level
+o_nmds_ord <- ps %>%
+ tax_transform(rank = "Order", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+o_nmds_ord +
+    theme_bw()
+
+## Family-level
+f_nmds_ord <- ps %>%
+ tax_transform(rank = "Family", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL)
+f_nmds_ord +
+    theme_bw()
+  
+## Genus-level
+g_nmds_ord <- ps %>%
+ tax_transform(rank = "Genus", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Genus-level NMDS")
+g_nmds_ord +
+    theme_bw()
+  
+## Species-level
+s_nmds_ord <- ps %>%
+ tax_transform(rank = "Species", trans = "identity") %>%
+ dist_calc(dist = "bray") %>%
+ ord_calc(method = "NMDS") %>% 
+ ord_plot(
+  axes = c(1, 2),
+  colour = "Platform", fill = "Platform",
+  shape = "Platform", alpha = 0.9,
+  size = 3) + 
+ scale_shape_girafe_filled() #+
+  labs(caption = NULL, title = "Species-level NMDS")
+s_nmds_ord  +
+    theme_bw()
+    
+```
+
+```{r ordination_gif, echo=FALSE, animation.hook='gifski', interval=3, fig.path="./GIFS/"}
+g_pca_ord
+s_pca_ord
+g_pcoa_ord
+s_pcoa_ord
+g_nmds_ord
+s_nmds_ord
+
+```

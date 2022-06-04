@@ -1,0 +1,415 @@
+# (PART) DATA CLUSTERING {-}
+
+# Clustering Microbiome Abundances with K-Means 
+
+## Introduction
+- Popular method in machine learning. 
+- Easy hyperparameters tuning. 
+
+## Import libraries
+```{r}
+library(tidyverse, suppressPackageStartupMessages())
+```
+
+## Import and preprocess data
+```{r}
+tidy_abund_longer <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/data-processing/process-m3abund/RDataRDS/df_class.rds") %>% 
+  data.table::transpose(keep.names = "SampleID", make.names = "Class") %>% 
+  distinct(SampleID, .keep_all = T) %>% 
+  mutate_if(is.numeric, ~replace(., is.na(.), 0)) %>% 
+  pivot_longer(-SampleID) %>%
+  group_by(SampleID) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  group_by(name) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total) 
+head(tidy_abund_longer)
+saveRDS(tidy_abund_longer, "RDataRDS/tidy_abund_longer.rds")
+
+
+# Prepare machine learning dataset
+## Select target
+tidy_metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/data-processing/process-m3abund/RDataRDS/metadata.rds") %>% 
+  select(SampleID, Platform)
+
+# Merge data with target
+tidy_abund_wider <- tidy_abund_longer %>% 
+  pivot_wider(id_cols = "SampleID", names_from = name, values_from = value) %>% 
+  inner_join(tidy_metadata, by = "SampleID") %>% 
+  relocate(Platform, .before = SampleID) %>% 
+  select(-SampleID)
+head(tidy_abund_wider)
+saveRDS(tidy_abund_wider, "RDataRDS/tidy_abund_wider.rds")
+```
+
+## Target class levels
+> As a demo we are using a dataset with predetermined labels. So we expect to have clusters reflecting the number of target levels.
+
+```{r}
+class(tidy_abund_wider$Platform)
+
+```
+
+> As we can see the target type is character. we need to convert it to factor and determine the levels
+
+```{r}
+tidy_abund_wider$Platform <-  as.factor(tidy_abund_wider$Platform)
+levels(tidy_abund_wider$Platform)
+```
+
+> Perfect! The target has three levels namely: HiSeq, MiSeq and NovaSeq.
+
+## Unsupervised Classification
+### Create unlabeled dataframe
+```{r}
+features <- tidy_abund_wider[,-1]
+target <- tidy_abund_wider[,1]
+```
+
+Now, all the data are numeric as we need to forget the target completely. 
+
+> We can come back to use it in supervised learning or use it to validate unsupervised
+
+## Find optimal K for K-means
+Terms to consider in Kmeans:
+
+1. WSS = **Within-Sum-of-Squares** (WSS), aka WCSS as Within-Cluster-Sum-of-Squares.
+  - It explains the homogeneity within a cluster and can be plotted against the number of clusters. See [elbow rule](). Typically, in elbow method the number of cluster (K) vary between 1-10.
+  - Mathematically, WSS score is the sum of these Squared Errors for all the points.
+  - Can use any distance metric e.g. euclidean distance, the Manhattan distance, etc.
+2. TSS = **Total-Sum-of-Squares** (TSS). It is the total distance of data points from mean of data.
+3. BSS = **Between Sum of Squares** (BSS)
+  - Mathematically, the BSS is the sum of the squared deviations between the groups.
+
+## Compute and plot WSS
+```{r}
+set.seed(2022)
+wss <- NULL
+for (i in 1:10){
+  fit = kmeans(scale(features),centers = i, trace = F)
+  wss = c(wss, fit$tot.withinss)
+}
+wss
+
+```
+
+
+```{block, type="tmbinfo", echo=T}
+## Important output of Kmeans
+- cluster: A vector of integers (from 1:k) indicating the cluster to which each point is allocated.
+- centers: A matrix of cluster centers.
+- totss: The total sum of squares.
+- withinss: Vector of within-cluster sum of squares, one component per cluster.
+- tot.withinss: Total within-cluster sum of squares, i.e. sum(withinss).
+- betweenss: The between-cluster sum of squares, i.e. $totss-tot.withinss$.
+- size: The number of points in each cluster.
+- iter
+- ifault
+```
+
+```{r}
+x <- 1:10
+data_frame(x, wss) %>% 
+ggplot(aes(1:10, wss)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Number of Clusters", y = "Scaled WSS")
+
+```
+
+
+
+```{r}
+set.seed(123)
+library(factoextra)
+set.seed(123)
+
+# Data preparation
+# +++++++++++++++
+# Remove species column (1) and scale the data
+df <- tidy_abund_wider
+dfscaled <- scale(df[, -1])
+
+# Optimal number of clusters in the data
+# ++++++++++++++++++++++++++++++++++++++
+# Examples are provided only for kmeans, but
+# you can also use cluster::pam (for pam) or
+#  hcut (for hierarchical clustering)
+ 
+### Elbow method (look at the knee)
+# Elbow method for kmeans
+fviz_nbclust(dfscaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2)
+
+# Average silhouette for kmeans
+fviz_nbclust(dfscaled, kmeans, method = "silhouette")
+
+### Gap statistic
+library(cluster)
+set.seed(123)
+# Compute gap statistic for kmeans
+# we used B = 10 for demo. Recommended value is ~500
+gap_stat <- clusGap(dfscaled, FUN = kmeans, nstart = 25,
+ K.max = 10, B = 10)
+ print(gap_stat, method = "firstmax")
+fviz_gap_stat(gap_stat)
+ 
+# Gap statistic for hierarchical clustering
+gap_stat <- clusGap(dfscaled, FUN = hcut, K.max = 10, B = 10)
+fviz_gap_stat(gap_stat)
+
+ 
+```
+
+
+## Applying the Elbow Method
+- There are multiple K that we can try in our model.
+- We can try to fit K = 3, 4 and 9 and review the clusters.
+
+### Trying K = 3
+```{r}
+set.seed(21)
+fit <- kmeans(tidy_abund_wider[,-1], 3,)
+
+library(fpc)
+plotcluster(tidy_abund_wider[,-1],fit$cluster, pointsbyclvecd = FALSE)
+```
+
+### Trying K = 4
+```{r}
+set.seed(22)
+fit <- kmeans(tidy_abund_wider[,-1], 4,)
+
+library(fpc)
+plotcluster(tidy_abund_wider[,-1],fit$cluster, pointsbyclvecd = FALSE)
+```
+
+### Trying K = 9
+```{r}
+set.seed(23)
+fit <- kmeans(tidy_abund_wider[,-1], 9,)
+
+library(fpc)
+plotcluster(tidy_abund_wider[,-1],fit$cluster, pointsbyclvecd = FALSE)
+```
+
+
+## Model Evaluation
+- TSS = BSS + WSS
+  - WSS need to be as small as possible.
+  - BSS need to be as high as posible for significant results.
+
+```{r}
+fit$betweenss/fit$totss
+```
+
+## Test model accuracy
+
+### Relabel the data with cluster number
+```{r}
+tidy_abund_wider$cluster = fit$cluster
+for (i in 1:length(tidy_abund_wider$Platform)){
+  if (tidy_abund_wider$cluster[i] == 1){
+    tidy_abund_wider$label[i] = "HiSeq"
+  } else if (tidy_abund_wider$cluster[i] == 3){
+    tidy_abund_wider$label[i] = "NovaSeq"
+  } else {
+    tidy_abund_wider$label[i] = "MiSeq"
+  }
+}
+```
+
+### Compute the accuracy score
+```{r}
+# Second, calculate the accuracy score
+mean(tidy_abund_wider$label == tidy_abund_wider$Platform)
+```
+
+
+### Subsampling in case of multiple labels
+
+```{r}
+subsample <- list()
+for(i in 1:3){
+  subsample[[i]]<- tidy_abund_wider[fit$cluster==i,]
+}
+
+table(subsample[[1]]$Platform)
+table(subsample[[2]]$Platform)
+table(subsample[[3]]$Platform)
+
+```
+
+# More Examples
+
+```{r}
+## From base R
+require(graphics)
+
+# a 2-dimensional example
+x <- rbind(matrix(rnorm(100, sd = 0.3), ncol = 2),
+           matrix(rnorm(100, mean = 1, sd = 0.3), ncol = 2))
+colnames(x) <- c("x", "y")
+(cl <- kmeans(x, 2))
+plot(x, col = cl$cluster)
+points(cl$centers, col = 1:2, pch = 8, cex = 2)
+
+# sum of squares
+ss <- function(x) sum(scale(x, scale = FALSE)^2)
+
+## cluster centers "fitted" to each obs.:
+fitted.x <- fitted(cl);  head(fitted.x)
+resid.x <- x - fitted(cl)
+
+## Equalities : ----------------------------------
+cbind(cl[c("betweenss", "tot.withinss", "totss")], # the same two columns
+         c(ss(fitted.x), ss(resid.x),    ss(x)))
+stopifnot(all.equal(cl$ totss,        ss(x)),
+	  all.equal(cl$ tot.withinss, ss(resid.x)),
+	  ## these three are the same:
+	  all.equal(cl$ betweenss,    ss(fitted.x)),
+	  all.equal(cl$ betweenss, cl$totss - cl$tot.withinss),
+	  ## and hence also
+	  all.equal(ss(x), ss(fitted.x) + ss(resid.x))
+	  )
+
+kmeans(x,1)$withinss # trivial one-cluster, (its W.SS == ss(x))
+
+## random starts do help here with too many clusters
+## (and are often recommended anyway!):
+(cl <- kmeans(x, 5, nstart = 25))
+plot(x, col = cl$cluster)
+points(cl$centers, col = 1:5, pch = 8)
+```
+
+# Data Clustering
+
+## Data preparation
+```{r}
+# Remove species column (5) and scale the data
+df.scaled <- scale(df[, -1])
+
+```
+
+## K-means clustering
+```{r}
+library(patchwork)
+km.res <- kmeans(df.scaled, 3, nstart = 10)
+
+# Visualize kmeans clustering
+# use repel = TRUE to avoid overplotting
+km1 <- fviz_cluster(km.res, df[, -1], ellipse.type = "norm")
+
+# Change the color palette and theme
+km2 <- fviz_cluster(km.res, df[, -1],
+   palette = "Set2", ggtheme = theme_minimal())
+
+ ## Not run: 
+# Show points only
+km3 <- fviz_cluster(km.res, df[, -1], geom = "point")
+# Show text only
+km4 <- fviz_cluster(km.res, df[, -1], geom = "text")
+
+km1 + km2 + km3 + km4 
+```
+
+## PAM clustering
+```{r}
+require(cluster)
+pam.res <- pam(df.scaled, 3)
+ # Visualize pam clustering
+pam1 <- fviz_cluster(pam.res, geom = "point", ellipse.type = "norm")
+```
+
+## Hierarchical clustering
+```{r}
+library(patchwork)
+# ++++++++++++++++++++++++
+# Use hcut() which compute hclust and cut the tree
+hc.cut <- hcut(df.scaled, k = 3, hc_method = "complete")
+# Visualize dendrogram
+hc1 <-fviz_dend(hc.cut, show_labels = FALSE, rect = TRUE)
+# Visualize cluster
+hc2<-fviz_cluster(hc.cut, ellipse.type = "convex")
+```
+
+# Layout using patchwork package
+https://patchwork.data-imaginist.com/articles/guides/layout.html
+```{r}
+# km1 + km2 + km3 + km4 + pam1 + hc1 + hc2 + hc3 + guide_area() + plot_layout(nrow = 4, byrow = FALSE,guides = 'collect') +
+#   plot_annotation(title = 'The wonderful clustering techniques', tag_levels = 'A')
+# 
+patchwork <- km1 + km2 + km3 + km4 + pam1 + hc1 + hc2 
+patchwork + plot_annotation(
+  title = 'The surprising truth about mtcars',
+  subtitle = 'These 3 plots will reveal yet-untold secrets about our beloved data-set',
+  caption = 'Disclaimer: None of these plots are insightful'
+, tag_levels = 'A') + plot_layout(nrow = 4, byrow = FALSE)
+```
+
+```{block, type="tmbqn", echo=T}
+
+## Read this from amazing group
+Source: https://realpython.com/k-means-clustering-python/#what-is-clustering
+
+### Popular Categories of Clustering Algorithms:
+1. Partitional clustering
+2. Hierarchical clustering
+3. Density-based clustering
+
+### Partitional Clustering
+Partitional clustering divides data objects into nonoverlapping groups. In other words, no object can be a member of more than one cluster, and every cluster must have at least one object.
+
+These techniques require the user to specify the number of clusters, indicated by the variable k. Many partitional clustering algorithms work through an iterative process to assign subsets of data points into k clusters. Two examples of partitional clustering algorithms are k-means and k-medoids.
+
+These algorithms are both nondeterministic, meaning they could produce different results from two separate runs even if the runs were based on the same input.
+
+Partitional clustering methods have several strengths:
+
+They work well when clusters have a spherical shape.
+They’re scalable with respect to algorithm complexity.
+They also have several weaknesses:
+
+They’re not well suited for clusters with complex shapes and different sizes.
+They break down when used with clusters of different densities.
+
+### Hierarchical Clustering
+Hierarchical clustering determines cluster assignments by building a hierarchy. This is implemented by either a bottom-up or a top-down approach:
+
+Agglomerative clustering is the bottom-up approach. It merges the two points that are the most similar until all points have been merged into a single cluster.
+
+Divisive clustering is the top-down approach. It starts with all points as one cluster and splits the least similar clusters at each step until only single data points remain.
+
+These methods produce a tree-based hierarchy of points called a dendrogram. Similar to partitional clustering, in hierarchical clustering the number of clusters (k) is often predetermined by the user. Clusters are assigned by cutting the dendrogram at a specified depth that results in k groups of smaller dendrograms.
+
+Unlike many partitional clustering techniques, hierarchical clustering is a deterministic process, meaning cluster assignments won’t change when you run an algorithm twice on the same input data.
+
+The strengths of hierarchical clustering methods include the following:
+
+They often reveal the finer details about the relationships between data objects.
+They provide an interpretable dendrogram.
+The weaknesses of hierarchical clustering methods include the following:
+
+They’re computationally expensive with respect to algorithm complexity.
+They’re sensitive to noise and outliers.
+
+### Density-Based Clustering
+Density-based clustering determines cluster assignments based on the density of data points in a region. Clusters are assigned where there are high densities of data points separated by low-density regions.
+
+Unlike the other clustering categories, this approach doesn’t require the user to specify the number of clusters. Instead, there is a distance-based parameter that acts as a tunable threshold. This threshold determines how close points must be to be considered a cluster member.
+
+Examples of density-based clustering algorithms include Density-Based Spatial Clustering of Applications with Noise, or DBSCAN, and Ordering Points To Identify the Clustering Structure, or OPTICS.
+
+The strengths of density-based clustering methods include the following:
+
+They excel at identifying clusters of nonspherical shapes.
+They’re resistant to outliers.
+The weaknesses of density-based clustering methods include the following:
+
+They aren’t well suited for clustering in high-dimensional spaces.
+They have trouble identifying clusters of varying densities.
+
+```

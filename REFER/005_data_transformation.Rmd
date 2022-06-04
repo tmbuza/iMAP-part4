@@ -1,0 +1,253 @@
+# (PART) DATA TRANSFORMATION {-}
+
+# Data Transformation Non-Phyloseq
+- Input: 
+ - Raw abundance data
+ - Rel abundance data
+
+
+Note that we have relative abundance not raw abundance. This compositional data need to be transformed with special methods such as inverse hyperbolic sine (asinh) or the arcsine transformation as suggested [@Gloor2017]
+
+## Arc sine (asin) transformation
+
+```{r}
+data <- readRDS("RDataRDS/otu_taxa_abund.rds")
+
+df_species_mat <- data %>% select(!all_of(taxlevels)) %>% distinct(OTU, .keep_all = T) %>% 
+	tibble::column_to_rownames("OTU")
+
+# Convert NAs to zeros
+df_species_mat <- df_species_mat %>% 
+	mutate_all(~replace(., is.na(.), 0))
+```
+
+```{r}
+
+x <- df_species_mat
+y <- x/max(x)
+df_asin <- round(asin(y), 6)
+df_asin <- as.matrix(df_asin)
+saveRDS(df_asin, "RDataRDS/df_asin.rds")
+
+
+df_asin[1:5,]
+
+```
+
+## Inverse hyperbolic sine (asinh) transformation
+
+```{r}
+x <- df_species_mat
+y <- x/max(x)
+df_asinh <- round(asinh(y), 6)
+df_asinh <- as.matrix(df_asinh)
+saveRDS(df_asinh, "RDataRDS/df_asinh.rds")
+
+df_asinh[1:5,]
+
+```
+
+# Compute Distance on Transformed Data
+- Here we use vegdist function on arcsine transformed data.
+- There are other functions out there, gooling can help.
+
+## Bray-Curtis Dissimilarities
+```{r}
+asin_bray_dist <- vegan::vegdist(t(df_asin), method = "bray")
+asin_bray_dist[is.na(asin_bray_dist)] = 0
+asin_bray_dist
+
+saveRDS(asin_bray_dist, file = "RDataRDS/asin_bray_dist.rds")
+
+```
+
+
+## Aitchison Distance
+- Requires count data which we do not have.
+- Using Arcsine transformed Data just for a demo. 
+
+```{r echo=FALSE, warning=FALSE}
+library(vegan)
+pca_asin <- rda(t(df_asin))
+
+library(robCompositions)
+asin_aitch_dist <- robCompositions::aDist(pca_asin$CA$u )
+asin_aitch_dist[is.na(asin_aitch_dist)] = 0
+asin_aitch_dist
+
+saveRDS(asin_aitch_dist, file = "RDataRDS/asin_aitch_dist.rds")
+
+```
+
+# With Phyloseq object
+
+## Raw Abundance
+```{r}
+(ps_raw <- readRDS("RDataRDS/ps_raw.rds"))
+
+cat("\n\n")
+otu_table(ps_raw)[1:5, 1:3]
+
+```
+```{r}
+library(phyloseq)
+library(microbiome)
+```
+
+
+##  No Transformation
+> Similar to raw abundance
+
+```{r}
+(ps_identity <- microbiome::transform(ps_raw, 'identity'))
+
+cat("\n\n")
+otu_table(ps_identity)[1:5, 1:3]
+
+```
+
+## Relative abundance
+```{r}
+(ps_rel = phyloseq::transform_sample_counts(ps_raw, function(x){x / sum(x)}))
+
+cat("\n\n")
+otu_table(ps_rel)[1:5, 1:3]
+
+```
+
+## Arcsine Transformation
+- Typically used when dealing with proportional and percentages. 
+- Proportionals range from 0 to 1
+- Percentages range from 0 to 100
+- The Metaphlan3 relative abundances are in percentages! That means the column totals in 100.
+
+> NB: 0 to 100 is outside the range of arcsine transformation. So, the values must be converted by dividing each value by the maximum value.
+
+```{r}
+x = otu_table(ps_rel)
+y <- x/max(x)
+(ps_arc <- round(asin(y), 4))[1:5, 1:3]
+
+```
+
+## Compositional Version
+> Similar to relative abundance
+
+```{r}
+(ps_compositional <- microbiome::transform(ps_raw, 'compositional'))
+
+cat("\n\n")
+otu_table(ps_compositional)[1:5, 1:3]
+
+```
+
+## Z-transform for OTUs
+
+```{r}
+(ps_z_otu <- microbiome::transform(ps_raw, 'Z', 'OTU'))
+
+cat("\n\n")
+otu_table(ps_z_otu)[1:5, 1:3]
+
+```
+
+## Z-transform for Samples
+
+```{r}
+(ps_z_sample <- microbiome::transform(ps_raw, 'Z', 'sample'))
+
+cat("\n\n")
+otu_table(ps_z_sample)[1:5, 1:3]
+
+```
+
+## Log10 Transform (log10(1+x) if the data contains zeroes)
+
+
+```{r}
+(ps_log10 <- microbiome::transform(ps_raw, 'log10'))
+
+cat("\n\n")
+otu_table(ps_log10)[1:5, 1:3]
+
+
+```
+
+## Log10p Transform (log10(1+x) always)
+
+```{r}
+(ps_log10p <- microbiome::transform(ps_raw, 'log10p'))
+
+cat("\n\n")
+otu_table(ps_log10p)[1:5, 1:3]
+
+```
+
+## CLR Transform
+
+- Note that small pseudocount is added if data contains zeroes
+```{r}
+(ps_clr <- microbiome::transform(ps_raw, 'clr'))
+
+cat("\n\n")
+otu_table(ps_clr)[1:5, 1:3]
+
+```
+
+
+## Shift the baseline
+
+```{r}
+(ps_shift <- microbiome::transform(ps_raw, 'shift', shift=1))
+
+cat("\n\n")
+otu_table(ps_shift)[1:5, 1:3]
+
+```
+
+## Data Scaling
+
+```{r}
+(ps_scale <- microbiome::transform(ps_raw, 'scale', scale=1))
+
+cat("\n\n")
+otu_table(ps_scale)[1:5, 1:3]
+
+```
+
+## Transformed Objects
+```{r}
+save(
+  ps_arc, 
+  ps_identity, 
+  ps_compositional, 
+  ps_z_otu, 
+  ps_z_sample, 
+  ps_log10, 
+  ps_log10p, 
+  ps_clr, 
+  ps_shift, 
+  ps_scale, 
+  file = "RDataRDS/Transformed_data_files.RData")
+
+```
+
+## Current saved objects
+```{r include=T}
+resave(
+# Data transformation objects
+  ps_arc, 
+  ps_identity, 
+  ps_compositional, 
+  ps_z_otu, 
+  ps_z_sample, 
+  ps_log10, 
+  ps_log10p, 
+  ps_clr, 
+  ps_shift, 
+  ps_scale,
+  file = "RDataRDS/project6data.RData")
+
+load("RDataRDS/project6data.RData", verbose = T)
+
+```

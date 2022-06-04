@@ -1,0 +1,189 @@
+# (PART) VISUALIZE ABANDANCE DATA {-}
+
+# Abundance Bar Charts {#ggbarplots}
+- Package: ggplot2
+- Default abundance: 0.1%
+
+```{r abund_bar, fig.height=7, fig.width=7}
+source("R/common.R")
+load("RDataRDS/taxa_abund_tables.RData", verbose = T)
+
+value = 0.5
+## Kingdom Barplot
+
+k_bar <- df_kingdom %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Kingdom)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Kingdom") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip()
+k_bar
+
+## Phylum Barplot
+
+p_bar <- df_phylum %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Phylum)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Phylum") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip()
+p_bar
+
+## Class Barplot
+
+c_bar <- df_class %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Class)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Class") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip()
+c_bar
+
+## Order Barplot
+
+o_bar <- df_order %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Order)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Order") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip() + nolegend
+o_bar
+
+## Family Barplot
+
+f_bar <- df_family %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Family)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Family") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip() + nolegend
+f_bar
+
+## Genus Barplot
+
+g_bar <- df_genus %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Genus)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Genus") +
+  theme(
+    axis.text = element_text(hjust = 1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip() + nolegend
+g_bar
+
+## Species Barplot
+
+s_bar <- df_species %>% reshape2::melt() %>% 
+  filter(value > 0.1) %>%
+  ggplot(aes(x=variable, y = value, fill = Species)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    x = "\nSample", 
+    y = "Relative Abundance", 
+    fill = "Species") +
+  theme(
+    axis.text = element_text(hjust = 0.1, size = 12),
+    axis.title=element_text(size=14,face="bold"),
+    axis.text.x = element_text(hjust=0.5, angle = 90),
+    legend.position = "right") +
+    guides(fill=guide_legend(ncol=1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() + 
+  coord_flip() + nolegend
+s_bar
+
+```
+
+
+```{r abund_bar_gif, echo=FALSE, fig.height=10, fig.width=10, animation.hook='gifski', interval=3, fig.path="./GIFS/"}
+k_bar
+p_bar
+c_bar
+o_bar
+f_bar
+g_bar
+s_bar
+```
+
+
+## Current saved objects
+```{r include=T}
+#Add richness objects
+resave(
+  # bar plots
+  k_bar,
+  p_bar,
+  c_bar,
+  o_bar,
+  f_bar,
+  g_bar,
+  s_bar,
+  file = "RDataRDS/project6data.RData")
+
+load("RDataRDS/project6data.RData", verbose = T)
+
+```
