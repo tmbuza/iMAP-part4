@@ -16,7 +16,8 @@ The <strong>iMAP-PART4</strong> is one of the <b>practical-user-guide-series</b>
 |-------------------------|---------------------------------------------------|-----------------|
 |[iMAP-PART1](https://github.com/tmbuza/iMAP-part1/) | How to Get Started with Microbiome Data Analysis | [eBook](https://complexdatainsights.com/books/microbiome-analysis/getting-started) |
 |[iMAP-PART2](https://github.com/tmbuza/iMAP-part2/) | Bioinformatics Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/bioinformatics-analysis) |
-|[iMAP-PART3](https://github.com/tmbuza/iMAP-part3/) | Exploratory Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/exploratory-analysis) |
+|[iMAP-PART3](https://github.com/tmbuza/iMAP-part3/) | Preprocessing of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/data-preprocessing) |
+|[iMAP-PART4](https://github.com/tmbuza/iMAP-part4/) | Exploratory Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/exploratory-analysis) |
 
 
 ## Citation
