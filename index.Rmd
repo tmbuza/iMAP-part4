@@ -9,7 +9,7 @@ output:
   bookdown::bs4_book:
     includes:
       in_header:
-    template: bs4_part3_template.html
+    template: bs4_part4_template.html
 documentclass: book
 classoption: openany #remove empty pages in pdf doc
 colorlinks: true
@@ -46,7 +46,9 @@ if (!dir.exists("data")) {dir.create("data")}
 ```{r include=FALSE}
 library(DiagrammeR)
 library(DiagrammeRsvg)
+library(rsvg)
 
+# 1. Make a graph
 graph <- DiagrammeR::grViz("
 digraph {
 graph [layout = dot, rankdir = TD]
@@ -61,44 +63,40 @@ penwidth = 2.0]
 edge [arrowhead = diamond]
 
 A [label = 'EXPLORATORY \nANALYSIS OF \nMICROBIOME DATA', fillcolor = white, penwidth = 5.0]
-B [label = 'Preprocesed\nTidy Data']
-C [label = 'Metadata']
-D [label = 'OTU Table']
-E [label = 'Taxonomy Table']
-F [label = 'Composite Object']
-G [label = 'Data\nTansformation']
-H [label = 'Preliminary\nVisualization']
-I [label = 'Deeper \nInsights...', fillcolor = yellow, penwidth = 2.0]
+B [label = 'Preprocesed\nTidy Objects']
+C [label = 'Data Visualization']
+D [label = 'Data Distribution']
+E [label = 'Barcharts']
+F [label = 'Boxplots']
+G [label = 'Heatmaps']
+H [label = 'Correlation']
+
 
 {A}  -> B [label = '  Input Data']
 {B}  -> C
-{B}  -> D
-{B}  -> E
-{C}  -> F
+{C}  -> D
+{D}  -> E
 {D}  -> F
-{E}  -> F
-{F}  -> G
-{F}  -> H
-{G}  -> H
-{G}  -> I
+{C}  -> H
+{H}  -> G
 
 
 }", height = 500, width = 500)
 
 # 2. Convert to SVG, then save as png
-part3_flow = DiagrammeRsvg::export_svg(graph)
-part3_flow = charToRaw(part3_flow) # flatten
-rsvg::rsvg_png(part3_flow, "img/part3_flow.png")
+part4_flow = DiagrammeRsvg::export_svg(graph)
+part4_flow = charToRaw(part4_flow) # flatten
+rsvg::rsvg_png(part4_flow, "img/part4_flow.png")
 ```
 
 
 <a href=""><img src="images/abund_bar.gif" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/></a>
 
 ## Quick Glimpse {-}
-Investigating the role of microbial communities in health and disease requires a thorough knowledge of the entire analytical process. Using wrong approaches can cost a significant amount of dollars and lengthy process to achieve the desired results. This is <b>PART 3</b> of the practical user guides intended to provide analytical support to the microbiome research community. The entire guide is reproducible, allowing users to easily follow along. If interested, user may use this model to publish their findings in a book format.
+Investigating the role of microbial communities in health and disease requires a thorough knowledge of the entire analytical process. Using wrong approaches can cost a significant amount of dollars and lengthy process to achieve the desired results. This is <b>PART 4</b> of the practical user guides intended to provide analytical support to the microbiome research community. The entire guide is reproducible, allowing users to easily follow along. If interested, user may use this model to publish their findings in a book format.
 
 ## Structure of this guide {-}
 This guide is divided into chapters to facilitate easy navigation. Each chapter contains several sections as displayed in the navigation bars on the left and right. Click the hyper-linked text if you want to jump into a specific chapter or section.
 
 ## Code availability {-}
-The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part3/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part3/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
+The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part4/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part4/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
