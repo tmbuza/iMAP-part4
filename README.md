@@ -1,16 +1,13 @@
 ...IN PROGRESS...
 
-# Microbiome Machine Learning
+# Exploratory Analysis of Microbiome Data
+
+![Microbiome Data Processing in R.](img/part4_flow.png)
 
 <br>
 
-<!--![Workflow for bioinformatics analysis of microbiome data.](img/part4_flow.png) -->
 
-<div><img src="img/part4_flow.png" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/><p>Workflow for bioinformatics analysis of microbiome data.</p></div>
-
-<br>
-
-The <strong>iMAP-PART4</strong> is one of the practical user guides for providing analytical support to the microbiome research community. Explore more guides from the table below:
+The <strong>iMAP-PART4</strong> is one of the <b>practical-user-guide-series</b> for providing analytical support to the microbiome research community. Explore more guides from the table below:
 
 ## Related resources
 
@@ -19,7 +16,8 @@ The <strong>iMAP-PART4</strong> is one of the practical user guides for providin
 |-------------------------|---------------------------------------------------|-----------------|
 |[iMAP-PART1](https://github.com/tmbuza/iMAP-part1/) | How to Get Started with Microbiome Data Analysis | [eBook](https://complexdatainsights.com/books/microbiome-analysis/getting-started) |
 |[iMAP-PART2](https://github.com/tmbuza/iMAP-part2/) | Bioinformatics Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/bioinformatics-analysis) |
-|[iMAP-PART3](https://github.com/tmbuza/iMAP-part3/) | Exploratory Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/exploratory-analysis) |
+|[iMAP-PART3](https://github.com/tmbuza/iMAP-part3/) | Preprocessing of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/data-preprocessing) |
+|[iMAP-PART4](https://github.com/tmbuza/iMAP-part4/) | Exploratory Analysis of Microbiome Data | [eBook](https://complexdatainsights.com/books/microbiome-analysis/exploratory-analysis) |
 
 
 ## Citation
