@@ -6,7 +6,7 @@
 
 <!--![Workflow for bioinformatics analysis of microbiome data.](img/part4_flow.png) -->
 
-<div><a href=""><img src="img/part4_flow.png" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/>Workflow for bioinformatics analysis of microbiome data.</a></div>
+<div><img src="img/part4_flow.png" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/><p>Workflow for bioinformatics analysis of microbiome data.</p></div>
 
 <br>
 
