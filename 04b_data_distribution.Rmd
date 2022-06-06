@@ -9,29 +9,18 @@ library(phyloseq)
 library(metagMisc)
 library(microbiome)
 library(microViz)
+library(RColorBrewer)
 
-load("../iMAP_part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```
 
 ## Barchats
 
-### Sample variability
+### Stacked sample barcharts filled by taxon
 
 > Note: It is important to get a clear insights into the sample variability before grouping by desired variables.
 
-```{r}
-samplebar_fmt <- theme(
-  axis.text.x=element_blank(),
-  axis.title.x=element_blank(),
-  axis.title.y=element_blank(),
-  # legend.position="none",
-  plot.title = element_text(hjust = 0.5),
-  plot.subtitle = element_text(hjust = 0.5),
-  axis.title=element_text(size=14,face="bold"))
-```
-
-
-```{r sample_rel_abund_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
@@ -111,8 +100,8 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   geom_col(position = "fill") +
 labs(x = NULL,
        y = "Mean Relative Abundance (%)",
-       title = "Phylumm Abundance",
-       fill = "Phylumm") +
+       title = "Phylum Abundance",
+       fill = "Phylum") +
   theme_classic() +
   theme(axis.text.x = element_markdown(),
         legend.text = element_markdown(),
@@ -311,9 +300,9 @@ labs(x = NULL,
 
 <br>
 
-### Group variability
+### Stacked group barcharts filled by taxon
 
-```{r taxon_rel_abund_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+```{r group_barchart_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
@@ -392,8 +381,8 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   geom_col(position = "fill") +
 labs(x = NULL,
        y = "Mean Relative Abundance (%)",
-       title = "Phylumm Abundance",
-       fill = "Phylumm") +
+       title = "Phylum Abundance",
+       fill = "Phylum") +
   theme_classic() +
   theme(axis.text.x = element_markdown(),
         legend.text = element_markdown(),
@@ -590,4 +579,671 @@ labs(x = NULL,
   centertitle
 ```
 
+
+### Grouped taxa barcharts
+
+```{r taxon_barcharts_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "kingdom",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Kingdom Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() + ybreaks5
+
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "phylum",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Phylum Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() + ybreaks5
+
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "class",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Class Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() + ybreaks5
+
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "order",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Order Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() + ybreaks5
+
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "family",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Family Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() + ybreaks5
+
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(mean_rel_abund) < 1,
+            mean = mean(mean_rel_abund),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(group, taxon) %>% 
+  summarise(mean_rel_abund = sum(mean_rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  # geom_col(width = 1, position = position_dodge()) +
+  geom_col(width=0.8, position = position_dodge()) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)",
+       title = "Genus Abundance",
+       fill = "Group") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  centertitle + 
+  coord_flip() 
+```
+
+
+## Strip chart
+
+```{r strip_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+set.seed(110912)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+  # group_by(group, taxon) %>% 
+  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(mean) < 3,
+            mean = mean(mean),
+            .groups = "drop")
+
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = rel_abund, fill = group)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3, 
+    dodge.width = 0.4),
+    pch = 21, 
+    stroke = 0,
+    size = 1.8) +
+  # stat_summary(fun=median, geom = "crossbar",
+  #              position = position_dodge(width = 0.8),
+  #              width = 0.8, 
+  #              size = 0.25,
+  #              show.legend = F) +
+  scale_fill_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    # labels = c("A",
+                    #            "B",
+                    #            "C",
+                    #            "D"),                    
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(x = NULL,
+       y = "Mean Relative Abundance (%)") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous() +
+  centertitle + 
+  coord_cartesian(ylim = c(0, 100)) #+ 
+  # coord_flip() 
+ 
+```
+
+## Jitter and Boxplot
+
+```{r jitter-box_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+### Standard boxplot
+
+set.seed(110912)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+  # group_by(group, taxon) %>% 
+  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(mean) < 3,
+            mean = mean(mean),
+            .groups = "drop")
+
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = rel_abund, color = group)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3,
+    dodge.width = 0.4),
+    pch = 19,
+    stroke = 0,
+    size = 1.8) +
+  # stat_summary(fun=median, geom = "crossbar",
+  #              position = position_dodge(width = 0.8),
+  #              width = 0.8, 
+  #              size = 0.25,
+  #              show.legend = F) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    # labels = c("A",
+                    #            "B",
+                    #            "C",
+                    #            "D"),                    
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (%)",
+       title = "Standard box-jitter plot") +
+  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous() +
+  centertitle + 
+  coord_cartesian(ylim = c(0, 100))
+
+
+### Flip x-y coordinates and add statistics
+set.seed(110912)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+  # group_by(group, taxon) %>% 
+  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(mean) < 3,
+            mean = mean(mean),
+            .groups = "drop")
+
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3,
+    dodge.width = 0.4),
+    pch = 19) +
+  # stat_summary(fun = median, geom = "crossbar",
+  #              position = position_dodge(width = 0.8),
+  #              width = 0.8,
+  #              size = 0.25,
+  #              show.legend = F) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    # labels = c("A",
+                    #            "B",
+                    #            "C",
+                    #            "D"),                    
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (%)",
+       title = "Flipped box-jitter plot") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+ 
+### Jitter plot with statistics
+
+set.seed(110912)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+  # group_by(group, taxon) %>% 
+  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(mean) < 3,
+            mean = mean(mean),
+            .groups = "drop")
+
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.5,
+    dodge.width = 0.4),
+    pch = 19) +
+  stat_summary(fun.data = median_hilow, geom = "crossbar",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.8),
+               width = 0.8,
+               size = 0.25,
+               show.legend = F) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Zebra",
+                               "Warthog",
+                               "Wildebeest",
+                               "Buffalo"),
+                    # labels = c("A",
+                    #            "B",
+                    #            "C",
+                    #            "D"),                    
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (%)",
+       title = "Flipped jitter plot with statistics") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+
+
+ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            mean = min(mean),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  # geom_jitter(position = position_jitterdodge(
+  #   jitter.width = 0.3,
+  #   dodge.width = 0.4),
+  #   pch = 19) +
+  stat_summary(fun.data = median_hilow, geom = "pointrange",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.4),
+               show.legend = T) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    # labels = c("A",
+                    #            "B",
+                    #            "C",
+                    #            "D"),                    
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (%)",
+       title = "Point Range at 50th Percentile") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+ 
+```
 

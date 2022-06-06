@@ -28,6 +28,7 @@ knitr::opts_chunk$set(
   fig.show = "asis"
 )
 
+
 ## Basic libraries
 if(!require("tidyverse")) {install.packages("tidyverse")}
 library(tidyverse, suppressPackageStartupMessages())
@@ -99,6 +100,20 @@ library(gifski)
 # library()
 
 # Shortcuts for frequently used functions
+
+
+# Formatting
+plainbar_fmt <- theme(
+  axis.text.x=element_blank(),
+  axis.title.x=element_blank(),
+  axis.title.y=element_blank(),
+  legend.position="none",
+  plot.title = element_text(hjust = 0.5),
+  plot.subtitle = element_text(hjust = 0.5),
+  axis.title=element_text(size=14,face="bold"))
+
+
+
 ## Axes
 noxticks <- theme(axis.text.x=element_blank())
 noxlabels <- theme(axis.text.x=element_blank())

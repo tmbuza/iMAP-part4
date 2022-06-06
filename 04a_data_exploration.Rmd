@@ -14,7 +14,7 @@ library(metagMisc)
 library(microbiome)
 library(microViz)
 
-load("../iMAP_part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 ```
 
 Let's use phyloseq object created from `mothur` output. 

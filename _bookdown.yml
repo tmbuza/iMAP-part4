@@ -3,7 +3,7 @@ language:
     chapter_name: "Chapter "
 delete_merged_file: true
 
-book_filename: "microbiome-part3"
+book_filename: "microbiome-part4"
 output_dir:
 rmd_files: [
 "index.Rmd",
