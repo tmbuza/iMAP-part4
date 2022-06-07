@@ -1,6 +1,6 @@
 # (PART) EXPLORATORY ANALYSIS {-}
 
-# Exploratory Analysis of Preprocessed Data {#explore-data}
+# Review Preprocessed Data {#explore-data}
 
 ## Load libraries and data
 ```{r}
