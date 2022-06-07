@@ -11,6 +11,7 @@ library(microbiome)
 library(microViz)
 library(RColorBrewer)
 
+# View object content
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```
 
@@ -21,6 +22,8 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 > Note: It is important to get a clear insights into the sample variability before grouping by desired variables.
 
 ```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
@@ -28,7 +31,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -36,23 +39,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Kingdom Abundance",
        fill = "Kingdom") +
   theme_classic() +
@@ -75,7 +78,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -83,23 +86,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Phylum Abundance",
        fill = "Phylum") +
   theme_classic() +
@@ -121,7 +124,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -129,23 +132,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Class Abundance",
        fill = "Class") +
   theme_classic() +
@@ -167,7 +170,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -175,23 +178,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Order Abundance",
        fill = "Order") +
   theme_classic() +
@@ -213,7 +216,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -221,23 +224,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Family Abundance",
        fill = "Family") +
   theme_classic() +
@@ -259,7 +262,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -267,23 +270,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Genus Abundance",
        fill = "Genus") +
   theme_classic() +
@@ -303,6 +306,8 @@ labs(x = NULL,
 ### Stacked group barcharts filled by taxon
 
 ```{r group_barchart_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
@@ -310,7 +315,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -318,23 +323,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Kingdom Abundance",
        fill = "Kingdom") +
   theme_classic() +
@@ -356,7 +361,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -364,23 +369,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Phylum Abundance",
        fill = "Phylum") +
   theme_classic() +
@@ -402,7 +407,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -410,23 +415,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Class Abundance",
        fill = "Class") +
   theme_classic() +
@@ -448,7 +453,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -456,23 +461,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Order Abundance",
        fill = "Order") +
   theme_classic() +
@@ -494,7 +499,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -502,23 +507,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Family Abundance",
        fill = "Family") +
   theme_classic() +
@@ -540,7 +545,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified *\\1*"),
          taxon = str_replace(taxon,
@@ -548,23 +553,23 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 2,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = mean_rel_abund, fill = taxon)) +
+  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Genus Abundance",
        fill = "Genus") +
   theme_classic() +
@@ -583,6 +588,10 @@ labs(x = NULL,
 ### Grouped taxa barcharts
 
 ```{r taxon_barcharts_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+set.seed(110912)
+
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
@@ -590,7 +599,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -600,24 +609,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Kingdom Abundance",
        fill = "Group") +
   theme_classic() +
@@ -641,7 +650,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -651,24 +660,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Phylum Abundance",
        fill = "Group") +
   theme_classic() +
@@ -692,7 +701,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -702,24 +711,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Class Abundance",
        fill = "Group") +
   theme_classic() +
@@ -743,7 +752,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -753,24 +762,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Order Abundance",
        fill = "Group") +
   theme_classic() +
@@ -794,7 +803,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -804,24 +813,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Family Abundance",
        fill = "Group") +
   theme_classic() +
@@ -845,7 +854,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -855,24 +864,24 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(mean_rel_abund) < 1,
-            mean = mean(mean_rel_abund),
+  summarise(pool = max(median_rel_abund) < 1,
+            median = median(median_rel_abund),
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(group, taxon) %>% 
-  summarise(mean_rel_abund = sum(mean_rel_abund), 
-            mean = min(mean),
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = mean_rel_abund, fill = group)) +
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
   # geom_col(width = 1, position = position_dodge()) +
   geom_col(width=0.8, position = position_dodge()) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)",
+       y = "median Relative Abundance (%)",
        title = "Genus Abundance",
        fill = "Group") +
   theme_classic() +
@@ -895,6 +904,8 @@ labs(x = NULL,
 ```{r strip_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 set.seed(110912)
 
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
@@ -902,7 +913,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
   # group_by(group, taxon) %>% 
-  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -912,10 +923,10 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
-  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
-  summarise(pool = max(mean) < 3,
-            mean = mean(mean),
+  summarise(pool = max(median) < 3,
+            median = median(median),
             .groups = "drop")
 
 
@@ -923,10 +934,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
-            mean = min(mean),
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(x = taxon, y = rel_abund, fill = group)) +
   geom_jitter(position = position_jitterdodge(
@@ -940,21 +951,21 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   #              width = 0.8, 
   #              size = 0.25,
   #              show.legend = F) +
-  scale_fill_manual(name = NULL,
+  scale_color_manual(name = NULL,
                     breaks = c("Buffalo",
                                "Warthog",
                                "Wildebeest",
                                "Zebra"),
-                    # labels = c("A",
-                    #            "B",
-                    #            "C",
-                    #            "D"),                    
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
                     values = c("blue",
                                "red",
                                "green",
                                "purple")) +
 labs(x = NULL,
-       y = "Mean Relative Abundance (%)") +
+       y = "median Relative Abundance (%)") +
   theme_classic() +
   theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
         axis.text.y = element_markdown(),
@@ -977,6 +988,8 @@ labs(x = NULL,
 
 set.seed(110912)
 
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 mo_taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
@@ -984,7 +997,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
   # group_by(group, taxon) %>% 
-  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -994,10 +1007,10 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
-  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
-  summarise(pool = max(mean) < 3,
-            mean = mean(mean),
+  summarise(pool = max(median) < 3,
+            median = median(median),
             .groups = "drop")
 
 
@@ -1005,10 +1018,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
-            mean = min(mean),
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = T),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(x = taxon, y = rel_abund, color = group)) +
   geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
@@ -1028,10 +1041,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
                                "Warthog",
                                "Wildebeest",
                                "Zebra"),
-                    # labels = c("A",
-                    #            "B",
-                    #            "C",
-                    #            "D"),                    
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
                     values = c("blue",
                                "red",
                                "green",
@@ -1061,7 +1074,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
   # group_by(group, taxon) %>% 
-  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -1071,10 +1084,10 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
-  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
-  summarise(pool = max(mean) < 3,
-            mean = mean(mean),
+  summarise(pool = max(median) < 3,
+            median = median(median),
             .groups = "drop")
 
 
@@ -1082,10 +1095,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
-            mean = min(mean),
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
   geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
@@ -1103,10 +1116,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
                                "Warthog",
                                "Wildebeest",
                                "Zebra"),
-                    # labels = c("A",
-                    #            "B",
-                    #            "C",
-                    #            "D"),                    
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
                     values = c("blue",
                                "red",
                                "green",
@@ -1135,7 +1148,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
   # group_by(group, taxon) %>% 
-  # summarise(mean_rel_abund = 100*mean(rel_abund), .groups = "drop") %>% 
+  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
   mutate(taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified<br>*\\1*"),
          taxon = str_replace(taxon,
@@ -1145,10 +1158,10 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
-  summarise(mean = mean(rel_abund), .groups = "drop") %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
-  summarise(pool = max(mean) < 3,
-            mean = mean(mean),
+  summarise(pool = max(median) < 3,
+            median = median(median),
             .groups = "drop")
 
 
@@ -1156,10 +1169,10 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
-            mean = min(mean),
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
   # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
@@ -1174,14 +1187,14 @@ inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>%
                size = 0.25,
                show.legend = F) +
   scale_color_manual(name = NULL,
-                    breaks = c("Zebra",
+                    breaks = c("Buffalo",
                                "Warthog",
                                "Wildebeest",
-                               "Buffalo"),
-                    # labels = c("A",
-                    #            "B",
-                    #            "C",
-                    #            "D"),                    
+                               "Zebra"),
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
                     values = c("blue",
                                "red",
                                "green",
@@ -1204,10 +1217,10 @@ labs(y = NULL,
   mutate(taxon = if_else(pool, "Other", taxon)) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
-            mean = min(mean),
+            median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, mean, .desc = F),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
   # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
@@ -1241,9 +1254,271 @@ labs(y = NULL,
         legend.text = element_markdown(),
         legend.key.size = unit(12, "pt"),
         legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+        legend.margin = margin(t = 3, r = 3, b = 3, l = 0))
   guides(fill = guide_legend(ncol=1)) +
   scale_x_continuous()
  
+```
+
+## Log scaled axis
+> Note: Log transformation may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
+
+
+### Establishing limit of detection (`lod`)
+```{r}
+set.seed(110912)
+
+nseqs_per_sample <- readRDS("RDataRDS/seqcount_per_sample.rds") %>% 
+  rename(N = nseqs) %>% 
+  count(N) %>% 
+  pull(N)
+  
+stopifnot(length(nseqs_per_sample) != 1)
+
+lod = max(100 * 1/nseqs_per_sample)
+lod
+```
+
+```{r fig.height=7, fig.width=6}
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+  mutate(taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified*\\1*"),
+         taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+         taxon = str_replace_all(taxon,
+                             "_", " "))
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(median) < 1,
+            median = median(median),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>% 
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
+ 
+  stat_summary(fun.data = median_hilow, geom = "pointrange",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.6),
+               show.legend = T
+               ) +
+  coord_trans(x = "log10") +
+  scale_x_continuous(limits = c(NA, 100),
+                     breaks = c(0.1, 1, 10, 100),
+                     labels = c(0.1, 1, 10, 100)) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (log10)",
+       title = "Point Range at 50th Percentile") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+```
+
+### Gluing OTU ID to taxon
+```{r fig.height=5, fig.width=5}
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus_otu",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  mutate(taxon = str_replace(string = taxon,
+                             pattern = "otu0*",
+                             replacement = "OTU ")) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(median) < 1,
+            median = max(median),
+            .groups = "drop")
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            median = max(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>% 
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
+  stat_summary(fun.data = median_hilow, geom = "pointrange",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.6),
+               # show.legend = T
+               ) +
+  coord_trans(x = "log10") +
+  scale_x_continuous(limits = c(NA, 100),
+                     breaks = c(0.1, 1, 10, 100),
+                     labels = c(0.1, 1, 10, 100)) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (log10)",
+       title = "Point Range at 50th Percentile") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+```
+# Statistical Tests
+## Kruskal-Wallis test
+- Ho: Relative abundance of taxon is the same across the group variable.
+- Ha: Not the same
+```{r eval=FALSE, include=FALSE}
+source("R/common.R")
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+library(broom)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  # mutate(taxon = str_replace(string = taxon,
+  #                            pattern = "otu0*",
+  #                            replacement = "OTU ")) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(median) < 1,
+            median = max(median),
+            .groups = "drop")
+
+otu_group_rel_abund <- inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            median = max(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+expt_signif <- mo_taxon_rel_abund %>% 
+  group_by(taxon) %>% 
+  nest() %>% 
+  mutate(expt_tests = map(.x = data,
+                         ~kruskal.test(rel_abund ~ group, data = .x) %>% 
+                           tidy())) %>%
+  unnest(expt_tests) %>% 
+  mutate(p.expt = p.adjust(p.value, method = "BH")) %>%
+  select(taxon, data, p.expt) %>% 
+  filter(p.expt < 0.01)
+
+expt_signif
+
+expt_signif %>%
+  mutate(pairwise_tests = map(.x = data,
+                              ~pairwise.wilcox.test(x = .x$rel_abund,
+                                                    g = .x$group,
+                                                    p.adjust.method = "BH") %>%
+                                tidy())) %>%
+  unnest(pairwise_tests) %>%
+  filter(p.value < 0.05) %>%
+  select(taxon, group1, group2, p.value) %>%
+  ungroup()
+
+
+# 
+#   mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>% 
+#   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+#   geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
+#   stat_summary(fun.data = median_hilow, geom = "pointrange",
+#                fun.args = list(conf.int = 0.5),
+#                position = position_dodge(width = 0.6),
+#                # show.legend = T
+#                ) +
+#   coord_trans(x = "log10") +
+#   scale_x_continuous(limits = c(NA, 100),
+#                      breaks = c(0.1, 1, 10, 100),
+#                      labels = c(0.1, 1, 10, 100)) +
+#   scale_color_manual(name = NULL,
+#                     breaks = c("Buffalo",
+#                                "Warthog",
+#                                "Wildebeest",
+#                                "Zebra"),
+#                     labels = c("Buffalo",
+#                                "Warthog",
+#                                "Wildebeest",
+#                                "Zebra"),                   
+#                     values = c("blue",
+#                                "red",
+#                                "green",
+#                                "purple")) +
+# labs(y = NULL,
+#        x = "Relative Abundance (log10)",
+#        title = "Point Range at 50th Percentile") +
+#   theme_classic() +
+#   theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+#         axis.text.x = element_markdown(),
+#         legend.text = element_markdown(),
+#         legend.key.size = unit(12, "pt"),
+#         legend.background = element_rect(colour = "gray", fill = NA),
+#         legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+```
+
+
+```{r}
 ```
 

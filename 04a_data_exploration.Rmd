@@ -2,10 +2,6 @@
 
 # Exploratory Analysis of Preprocessed Data {#explore-data}
 
-## Prerequisite
-- Data objects containing metadata, abundance and taxonomy such as **R and phyloseq objects** prepared in previous section.
-- Analysis and visualization tools
-
 ## Load libraries and data
 ```{r}
 source("R/common.R")
@@ -14,10 +10,34 @@ library(metagMisc)
 library(microbiome)
 library(microViz)
 
+mo_otutable_long <- readRDS("../iMAP-part3/RDataRDS/mo_otutable_long.rds")
 load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 ```
 
-Let's use phyloseq object created from `mothur` output. 
+Let's use objects created from `mothur` output.
+
+
+## How many reads per sample
+```{r}
+seqcount_per_sample <- mo_otutable_long %>% 
+  group_by(sample_id) %>% 
+  summarise(nseqs = sum(count), .groups = "drop") %>% 
+  arrange(nseqs)
+
+seqcount_per_sample
+
+min_count <- min(seqcount_per_sample$nseqs)
+max_count <- max(seqcount_per_sample$nseqs)
+
+saveRDS(seqcount_per_sample, "RDataRDS/seqcount_per_sample.rds")
+save(seqcount_per_sample, min_count, max_count, file = "RDataRDS/count_min_max_seqs.RData")
+```
+
+
+```{r}
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
 
 ```{r}
 (ps <- ps_mo_raw)
