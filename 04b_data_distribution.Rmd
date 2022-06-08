@@ -10,6 +10,7 @@ library(metagMisc)
 library(microbiome)
 library(microViz)
 library(RColorBrewer)
+library(glue)
 
 # View object content
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
@@ -24,7 +25,7 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -33,13 +34,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -63,11 +64,11 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
   
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -76,13 +77,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -106,10 +107,10 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -118,13 +119,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -148,10 +149,10 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -160,13 +161,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -190,10 +191,10 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -202,13 +203,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -232,10 +233,10 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -244,13 +245,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -274,7 +275,7 @@ labs(x = NULL,
         axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() # + samplebar_fmt
+  coord_flip() + nolegend
 ```
 
 <br>
@@ -284,7 +285,7 @@ labs(x = NULL,
 ```{r group_barchart_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -293,13 +294,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -326,7 +327,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -335,13 +336,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -368,7 +369,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -377,13 +378,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -410,7 +411,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -419,13 +420,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -452,7 +453,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -461,13 +462,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -494,7 +495,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -504,13 +505,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -545,7 +546,7 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -554,13 +555,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -590,7 +591,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -599,13 +600,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -635,7 +636,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -644,13 +645,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -680,7 +681,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -689,13 +690,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -725,7 +726,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -734,13 +735,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -770,7 +771,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -779,13 +780,13 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 1,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
@@ -823,14 +824,14 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -839,7 +840,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -901,14 +902,14 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -917,7 +918,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -974,14 +975,14 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -990,7 +991,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -1043,14 +1044,14 @@ labs(y = NULL,
 ### Flip x-y coordinates and add statistics
 set.seed(110912)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -1059,7 +1060,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -1109,14 +1110,14 @@ labs(y = NULL,
 
 set.seed(110912)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -1125,7 +1126,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -1173,7 +1174,7 @@ labs(y = NULL,
   scale_x_continuous()
 
 
- inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+ inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -1243,7 +1244,7 @@ lod
 ```{r fig.dim=c(7, 6)}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
@@ -1258,7 +1259,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
     taxon = str_replace_all(taxon,
                              "_", " "))
 
-taxon_pool <- mo_taxon_rel_abund %>%
+taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
@@ -1266,7 +1267,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             median = median(median),
             .groups = "drop")
 
-inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
@@ -1319,7 +1320,7 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
 otu_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
-  filter(level == "genus_phylo",
+  filter(level == "taxon_phylo",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
