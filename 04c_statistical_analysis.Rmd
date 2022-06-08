@@ -25,7 +25,7 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
 otu_rel_abund <- mo_Rjoined_object %>% 
   rename(group = isolate) %>% 
-  filter(level == "genus_phylo",
+  filter(level == "taxon_phylo",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
