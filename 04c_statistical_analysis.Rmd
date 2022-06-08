@@ -11,17 +11,13 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```
 
 ## Kruskal-Wallis test
-Hypothesis:
-
-- Ho: Relative abundance of taxon is the same across the group variable.
-- Ha: Not the same
-
-Reducing False Positive
-
-- Pairwise Test
+- Here we state the hypothesis like so:
+  - Ho: Relative abundance of taxon is the same across the group variable.
+  - Ha: Not the same
+- Then we reducing the False Positive by perfoming a pairwise test:
   - Test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
   - Method: Benjamini-Hochberg (BH).
-
+  
 ```{r}
 set.seed(110912)
 
@@ -53,6 +49,7 @@ otu_group_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>%
          taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0))
 
+## Compute statistics
 group_signif <- otu_group_rel_abund %>% 
   group_by(taxon) %>% 
   nest() %>% 
@@ -60,7 +57,9 @@ group_signif <- otu_group_rel_abund %>%
                          ~kruskal.test(rel_abund~group, data = .x) %>% 
                            tidy())) %>%
   unnest(expt_tests, names_repair = "unique") %>% 
-  mutate(p_adj = p.adjust(p.value, method = "BH")) 
+  ungroup() %>% 
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
+  select(taxon, data, p.value, p_adj)
 
 group_signif
 
@@ -70,7 +69,7 @@ saveRDS(group_signif, "RDataRDS/group_signif.rds")
 
 ## Pairwise sample comparison
 ```{r}
-paired_signif <- readRDS("RDataRDS/group_signif.rds") %>% 
+pair_test <- readRDS("RDataRDS/group_signif.rds") %>% 
   filter(p.value < 0.25) %>%
   mutate(pairwise_tests = map(.x = data,
                               ~pairwise.wilcox.test(x = .x$rel_abund,
@@ -78,52 +77,82 @@ paired_signif <- readRDS("RDataRDS/group_signif.rds") %>%
                                                     p.adjust.method = "BH") %>%
                                 tidy())) %>%
   unnest(pairwise_tests, names_repair = "unique") %>% 
-  select(taxon, group1, group2, p_adj)
+  select(taxon, group1, group2, p.value = p.value...3, p_adj) %>% 
+  mutate(pos = as.numeric(taxon),
+         y = if_else(group1 == "Warthog", pos + 0.2, pos),
+         y = if_else(group1 == "Wildebeest", pos + 0.2, pos),
+         y = if_else(group1 == "Zebra", pos + 0.2, pos),
+         y = if_else(group1 == "Buffalo", pos + 0.2, pos),
+         yend = if_else(group2 == "Warthog", pos, pos - 0.2),
+         yend = if_else(group2 == "Wildebeest", pos, pos - 0.2),
+         yend = if_else(group2 == "Zebra", pos, pos - 0.2),
+         yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
+         x = case_when(group1 == "Warthog" & 
+                         group2 == "Buffalo" ~ 60,
+                       group1 == "Wildebeest" & 
+                         group2 == "Buffalo" ~ 75,   
+                       group1 == "Wildebeest" &
+                         group2 == "Warthog" ~ 90,
+                       group1 == "Zebra" & 
+                         group2 == "Buffalo" ~ 60,
+                       group1 == "Zebra" & 
+                         group2 == "Warthog" ~ 75,                         
+                       group1 == "Zebra" & 
+                         group2 == "Wildebeest" ~ 90),         
+         xend = x)
 
-paired_signif
+pair_test
+
 ```
 
 
+## Add significance to otuplot
 
-```{r}
-# 
-#   mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>% 
-#   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-#   geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
-#   stat_summary(fun.data = median_hilow, geom = "pointrange",
-#                fun.args = list(conf.int = 0.5),
-#                position = position_dodge(width = 0.6),
-#                # show.legend = T
-#                ) +
-#   coord_trans(x = "log10") +
-#   scale_x_continuous(limits = c(NA, 100),
-#                      breaks = c(0.1, 1, 10, 100),
-#                      labels = c(0.1, 1, 10, 100)) +
-#   scale_color_manual(name = NULL,
-#                     breaks = c("Buffalo",
-#                                "Warthog",
-#                                "Wildebeest",
-#                                "Zebra"),
-#                     labels = c("Buffalo",
-#                                "Warthog",
-#                                "Wildebeest",
-#                                "Zebra"),                   
-#                     values = c("blue",
-#                                "red",
-#                                "green",
-#                                "purple")) +
-# labs(y = NULL,
-#        x = "Relative Abundance (log10)",
-#        title = "Point Range at 50th Percentile") +
-#   theme_classic() +
-#   theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
-#         axis.text.x = element_markdown(),
-#         legend.text = element_markdown(),
-#         legend.key.size = unit(12, "pt"),
-#         legend.background = element_rect(colour = "gray", fill = NA),
-#         legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+### Get the otuplot
+```{r, fig.dim=c(7, 6)}
+otuplot <- otu_group_rel_abund %>% 
+  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>%
+  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
+  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
+  stat_summary(fun.data = median_hilow, geom = "pointrange",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.6),
+               # show.legend = T
+               ) +
+  coord_trans(x = "log10") +
+  scale_x_continuous(limits = c(NA, 100),
+                     breaks = c(0.1, 1, 10, 100),
+                     labels = c(0.1, 1, 10, 100)) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (log10)",
+       title = "Point Range at 50th Percentile") +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
 ```
 
-
+### Add some styling to the otuplot
 ```{r}
+otuplot +
+  geom_segment(data = pair_test, aes(x = x, xend = xend, y = y,  yend = yend),
+               inherit.aes = F) #+
+  # geom_text(data = pair_test, 
+  #           aes(x = x_star, y = y_star), label = "*", inherit.aes = F)
 ```
