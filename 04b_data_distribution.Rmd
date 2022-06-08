@@ -31,11 +31,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -44,7 +40,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -78,11 +74,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -91,7 +83,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -124,11 +116,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -137,7 +125,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -170,11 +158,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -183,7 +167,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -216,11 +200,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -229,7 +209,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -262,11 +242,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
    group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -275,7 +251,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
    group_by(sample_id, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -315,11 +291,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -328,7 +300,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -361,11 +333,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -374,7 +342,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -407,11 +375,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -420,7 +384,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -453,11 +417,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -466,7 +426,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -499,11 +459,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -512,7 +468,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -545,11 +501,8 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified *\\1*"),
-         taxon = str_replace(taxon,
-                             "^(\\S*)$", "*\\1*"))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -558,7 +511,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -599,13 +552,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -614,7 +561,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -650,13 +597,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -665,7 +606,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -701,13 +642,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -716,7 +651,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -752,13 +687,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -767,7 +696,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -803,13 +732,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -818,7 +741,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -854,13 +777,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
   group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(taxon) %>%
@@ -869,7 +786,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
@@ -911,15 +828,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  # group_by(group, taxon) %>% 
-  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
@@ -931,7 +840,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
 
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -981,9 +890,11 @@ labs(x = NULL,
  
 ```
 
-## Jitter and Boxplot
 
-```{r jitter-box_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+
+## Histogram with bins
+
+```{r histogram_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 ### Standard boxplot
 
 set.seed(110912)
@@ -995,15 +906,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  # group_by(group, taxon) %>% 
-  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
@@ -1015,7 +918,80 @@ taxon_pool <- mo_taxon_rel_abund %>%
 
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, group, taxon) %>% 
+  summarise(rel_abund = sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = T),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(x = taxon, y = rel_abund)) +
+  geom_histogram(stat = "identity", bins = 20) +
+
+  # stat_summary(fun=median, geom = "crossbar",
+  #              position = position_dodge(width = 0.8),
+  #              width = 0.8, 
+  #              size = 0.25,
+  #              show.legend = F) +
+  scale_color_manual(name = NULL,
+                    breaks = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),
+                    labels = c("Buffalo",
+                               "Warthog",
+                               "Wildebeest",
+                               "Zebra"),                   
+                    values = c("blue",
+                               "red",
+                               "green",
+                               "purple")) +
+labs(y = NULL,
+       x = "Relative Abundance (%)",
+       title = "Standard box-jitter plot") +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous() +
+  centertitle + 
+  coord_cartesian(ylim = c(0, 100))
+
+```
+
+
+## Jitter and Boxplot
+
+```{r jitter_box_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+### Standard boxplot
+
+set.seed(110912)
+
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
+mo_taxon_rel_abund <- mo_Rjoined_object %>% 
+  rename(group = isolate) %>% 
+  filter(level == "genus",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
+
+taxon_pool <- mo_taxon_rel_abund %>%
+  group_by(group, taxon) %>%
+  summarise(median = median(rel_abund), .groups = "drop") %>%
+  group_by(taxon) %>% 
+  summarise(pool = max(median) < 3,
+            median = median(median),
+            .groups = "drop")
+
+
+inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -1072,15 +1048,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  # group_by(group, taxon) %>% 
-  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
@@ -1092,7 +1060,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
 
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -1146,15 +1114,7 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  # group_by(group, taxon) %>% 
-  # summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified<br>*\\1*"),
-         taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
 taxon_pool <- mo_taxon_rel_abund %>%
   group_by(group, taxon) %>%
@@ -1166,7 +1126,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
 
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -1214,7 +1174,7 @@ labs(y = NULL,
 
 
  inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -1290,11 +1250,12 @@ mo_taxon_rel_abund <- mo_Rjoined_object %>%
          ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  mutate(taxon = str_replace(taxon,
+  mutate(
+    taxon = str_replace(taxon,
                              "(.*)_unclassified", "Unclassified*\\1*"),
-         taxon = str_replace(taxon,
+    taxon = str_replace(taxon,
                              "^([^>]*)$", "*\\1*"),
-         taxon = str_replace_all(taxon,
+    taxon = str_replace_all(taxon,
                              "_", " "))
 
 taxon_pool <- mo_taxon_rel_abund %>%
@@ -1306,7 +1267,7 @@ taxon_pool <- mo_taxon_rel_abund %>%
             .groups = "drop")
 
 inner_join(mo_taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", taxon)) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
   summarise(rel_abund = sum(rel_abund), 
             median = min(median),
@@ -1361,7 +1322,14 @@ otu_rel_abund <- mo_Rjoined_object %>%
   filter(level == "genus_phylo",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
+    mutate(
+    taxon = str_replace(taxon,
+                             "(.*)_unclassified", "Unclassified*\\1*"),
+    taxon = str_replace(taxon,
+                             "^([^>]*)$", "*\\1*"),
+    taxon = str_replace_all(taxon,
+                             "_", " "))
 
 taxon_pool <- otu_rel_abund %>%
   group_by(group, taxon) %>%
