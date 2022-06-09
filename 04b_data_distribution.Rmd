@@ -891,8 +891,6 @@ labs(x = NULL,
  
 ```
 
-
-
 ## Histogram with bins
 
 ```{r histogram_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
@@ -1250,14 +1248,7 @@ taxon_rel_abund <- mo_Rjoined_object %>%
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
          ) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-  mutate(
-    taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified*\\1*"),
-    taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-    taxon = str_replace_all(taxon,
-                             "_", " "))
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
 taxon_pool <- taxon_rel_abund %>%
   group_by(group, taxon) %>%
@@ -1317,29 +1308,21 @@ labs(y = NULL,
 ## Gluing OTU ID to taxon
 ```{r fig.dim=c(7, 6)}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
 otu_rel_abund <- mo_Rjoined_object %>% 
+  select(-taxon) %>% 
   rename(group = isolate) %>% 
-  filter(level == "taxon_phylo",
+  rename(taxon = taxon_phylo) %>% 
+  filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop") %>% 
-    mutate(
-    taxon = str_replace(taxon,
-                             "(.*)_unclassified", "Unclassified*\\1*"),
-    taxon = str_replace(taxon,
-                             "^([^>]*)$", "*\\1*"),
-    taxon = str_replace_all(taxon,
-                             "_", " "))
-
+  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 taxon_pool <- otu_rel_abund %>%
   group_by(group, taxon) %>%
   summarise(median = median(rel_abund), .groups = "drop") %>%
   group_by(taxon) %>% 
-  summarise(pool = max(median) < 1,
+  summarise(pool = max(median) < 3,
             median = max(median),
             .groups = "drop")
-
 inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
