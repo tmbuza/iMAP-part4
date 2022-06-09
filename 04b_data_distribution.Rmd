@@ -1307,7 +1307,6 @@ labs(y = NULL,
 
 ## Gluing OTU ID to taxon
 ```{r fig.dim=c(7, 6)}
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 otu_rel_abund <- mo_Rjoined_object %>% 
   select(-taxon) %>% 
   rename(group = isolate) %>% 
@@ -1323,6 +1322,7 @@ taxon_pool <- otu_rel_abund %>%
   summarise(pool = max(median) < 3,
             median = max(median),
             .groups = "drop")
+
 inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 

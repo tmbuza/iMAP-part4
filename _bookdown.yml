@@ -9,7 +9,7 @@ rmd_files: [
 "index.Rmd",
 "04a_data_exploration.Rmd",
 "04b_data_distribution.Rmd",
-# "04c_statistical_analysis.Rmd",
+"04c_statistical_analysis.Rmd",
 "99_appendix.Rmd",
 "999-references.Rmd"
 ]
