@@ -2,38 +2,115 @@
 
 # Statistical Tests
 
-## Load libraries and data
+## Prepare data for statistical analysis {#stats-data}
+> Note: For statistical analysis we will use a standard subsample across all samples.
+
 ```{r}
 source("R/common.R")
+library(tidyverse)
+library(ggtext)
+library(glue)
 library(broom)
 
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
 set.seed(110912)
 
-nseqs_per_sample <- readRDS("../iMAP-part3/RDataRDS/phylo_table_long.rds") %>% 
-  group_by(sample_id) %>%
-  summarise(N = sum(count), .groups="drop") %>%
-  count(N) %>%
+metadata <- readRDS("../smda-end2end/RDataRDS/mo_metadata.rds") %>% 
+  select(sample_id, group = isolate) %>% 
+  drop_na(group)
+
+phylo_sub_counts_long <- read_tsv("../smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F) %>%
+  rename_all(tolower) %>% 
+  select(-label, -numotus, sample_id = group, starts_with("phylo")) %>%
+  pivot_longer(-sample_id, names_to="otu", values_to="count") %>% 
+  filter(count != 0)
+saveRDS(phylo_sub_counts_long, "RDataRDS/phylo_sub_counts_long.rds")
+
+otutable <- phylo_sub_counts_long %>%
+  pivot_wider(id_cols = otu, names_from = sample_id, values_from = count) %>%
+  mutate_if(is.numeric, ~replace(., is.na(.), 0))
+
+paste("Dimension of the phylotype subsample table table is", 
+      dim(otutable)[1], "rows and", 
+      dim(otutable)[2], "columns") 
+saveRDS(otutable, "RDataRDS/phylo_sub_table.rds")
+
+
+nseqs_per_sample <- phylo_sub_counts_long %>% 
+  group_by(sample_id) %>% 
+  summarise(N = sum(count), .groups = "drop") %>% 
+  count(N) %>% 
   pull(N)
 
-# stopifnot(length(nseqs_per_sample) == 1)
-stopifnot(length(nseqs_per_sample) != 1)
+stopifnot(length(nseqs_per_sample) == 1)
 
-lod <- max(100* 1/nseqs_per_sample)
-lod
+lod <- 100*1/nseqs_per_sample
+
+
+taxlevels <- c("kingdom", "phylum", "class", "order", "family", "genus")
+taxonomy <- read_tsv("../smda-end2end/data/final.tx.1.cons.taxonomy", show_col_types = F) %>%
+  rename_all(tolower) %>%
+  select(otu, taxonomy) %>%
+  mutate(otu = tolower(otu),
+         taxonomy = str_replace_all(taxonomy, "\\(\\d+\\)", ""),
+         taxonomy = str_replace_all(taxonomy, ";$", "")) %>%
+  mutate(pretty_otu = str_replace(string = otu,
+                         pattern = "phylo0*",
+                         replacement = "Phylotype ")) %>%
+  relocate(pretty_otu, .after = "otu") %>%
+  separate(taxonomy, into = all_of(taxlevels), sep = ";")
+
+paste("Dimension of the taxonomy table is",
+      dim(taxonomy)[1], "rows and",
+      dim(taxonomy)[2], "columns")
+
+head(taxonomy)[, 1:4] %>% as.data.frame()
+saveRDS(taxonomy, "RDataRDS/sub_phylo_taxonomy.rds")
+
+
+composite <- inner_join(metadata, phylo_sub_counts_long, by = "sample_id") %>% 
+  inner_join( ., taxonomy, by = "otu") %>% 
+  group_by(sample_id) %>% 
+  mutate(rel_abund = count/sum(count)) %>% 
+  ungroup() %>% 
+  relocate(count, .before = rel_abund) 
+
+colnames(composite)
+
+## Confirm that rel abund adds to 1 (100%)
+composite %>% 
+  group_by(sample_id) %>% 
+  summarise(total_re_abund = sum(rel_abund))
+
+## Create tidy R object
+Rjoined_sub_object <- composite %>% 
+  pivot_longer(c(all_of(taxlevels), "otu"), names_to = "level", values_to = "taxon") %>% 
+  relocate(rel_abund, .after = taxon) %>% 
+  mutate(taxon = str_replace(string = taxon,
+                            pattern = "(.*)",
+                            replacement = "*\\1*"),
+        taxon = str_replace(string = taxon,
+                            pattern = "\\*(.*)_unclassified\\*",
+                            replacement = "Unclassified<br>*\\1*"),
+        taxon = str_replace_all(taxon, "_", " "),
+        taxon_phylo = glue("{taxon}<br>({pretty_otu})"))
+
+
+saveRDS(composite, "RDataRDS/composite.rds")
+save(Rjoined_sub_object, file = "RDataRDS/Rjoined_sub_object.RData")
+save(composite, Rjoined_sub_object, file = "RDataRDS/saved_objects.RData")
+
+
 ```
 
-## Preparing data
-```{r}
+## Group relative abundance plot
+```{r, fig.dim=c(10, 6)}
 set.seed(110912)
 
-otu_rel_abund <- Rjoined_object %>% 
+otu_rel_abund <- Rjoined_sub_object %>% 
   select(-taxon) %>% 
-  rename(group = isolate) %>% 
   rename(taxon = taxon_phylo) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+  filter(level == "family",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
 
@@ -45,7 +122,7 @@ taxon_pool <- otu_rel_abund %>%
             median = max(median),
             .groups = "drop")
 
-## Group data
+## Group relative abundance
 otu_group_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
   group_by(sample_id, group, taxon) %>% 
@@ -55,41 +132,29 @@ otu_group_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>%
   mutate(taxon = factor(taxon),
          taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) 
-```
 
-### Getting the otuplot
-```{r, fig.dim=c(7, 6)}
+## Plot group relative abundance
 otuplot <- otu_group_rel_abund %>% 
-  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>%
+  mutate(rel_abund = if_else(rel_abund == 0, (3/4)*lod, rel_abund)) %>%
   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
   geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
   stat_summary(fun.data = median_hilow, geom = "pointrange",
                fun.args = list(conf.int = 0.5),
-               position = position_dodge(width = 0.6),
-               # show.legend = T
+               position = position_dodge(width = 0.7),
+               show.legend = T
                ) +
   coord_trans(x = "log10") +
   scale_x_continuous(limits = c(NA, 100),
                      breaks = c(0.1, 1, 10, 100),
                      labels = c(0.1, 1, 10, 100)) +
   scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
+                    breaks = c("Buffalo", "Wildebeest", "Warthog", "Zebra"),
+                    labels = c("Buffalo", "Wildebeest", "Warthog", "Zebra"),
+                    values = c("blue2", "red", "green4", "purple")) +
 labs(y = NULL,
        x = "Relative Abundance (log10)",
-       title = "Point Range at 50th Percentile") +
-  # theme_classic() +
-  theme_bw() +
+       title = "Group Point Range at 50th Percentile") +
+  theme_classic() +
   theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
         axis.text.x = element_markdown(),
         legend.text = element_markdown(),
@@ -99,7 +164,6 @@ labs(y = NULL,
 
 otuplot
 ```
-
 
 
 ## Kruskal-Wallis test
@@ -115,9 +179,9 @@ Demo
 - Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
 - Correction method: Benjamini-Hochberg (BH).
 
-### Computing group p-values and p-adjusted
-```{r, fig.dim=c(7, 6)}
-group_signif <- otu_group_rel_abund %>% 
+### Genarate testing data
+```{r fig.dim=c(7, 6), message=FALSE, warning=FALSE}
+expt_signif <- otu_group_rel_abund %>% 
   group_by(taxon) %>% 
   nest() %>% 
   mutate(expt_tests = map(.x = data,
@@ -128,12 +192,13 @@ group_signif <- otu_group_rel_abund %>%
   mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
   select(taxon, data, p.value, p_adj, method)
 
-if(min(group_signif$p.value) <= 0.5) {
-  group_signif <- group_signif %>% 
-    filter(p.value <= 0.5)
+if(min(expt_signif$p.value) < 0.2) {
+  expt_signif <- expt_signif %>% 
+    filter(p.value < 0.2)
   
-paste("Found significant P-values ranging from:", min(group_signif$p.value), "-", max(group_signif$p.value))
+    saveRDS(expt_signif, "RDataRDS/signif_pairs.rds")
 
+### Setting quartile limits
 get_max_quartile <- function(x) {
   x %>% 
     group_by(group) %>% 
@@ -141,8 +206,9 @@ get_max_quartile <- function(x) {
     summarise(max_quartile = max(third_q)) %>% 
     pull(max_quartile)
 }
-  
-pairs_test <- group_signif %>% 
+
+### Pairwise comparison
+pairs_test <- expt_signif %>% 
   mutate(max_quartile = map_dbl(.x = data, ~get_max_quartile(.x))) %>% 
   mutate(pairwise_tests = map(.x = data,
                               ~pairwise.wilcox.test(x = .x$rel_abund,
@@ -152,64 +218,81 @@ pairs_test <- group_signif %>%
   unnest(pairwise_tests, names_repair = "unique") %>% 
   select(taxon, group1, group2, p.value = p.value...3, p_adj, max_quartile)
 
-### Defining x-y coordinates and stars
+# Defining x-y and stars coordinates
 pairs_test_x_y <- pairs_test %>% 
   select(taxon, group1, group2, p.value, max_quartile) %>% 
   mutate(pos = as.numeric(taxon),
          y = if_else(group1 == "Warthog", pos + 0.2, pos),
          yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
-         # y = if_else(group1 == "Wildebeest", pos + 0.2, pos),
-         # yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
-         # y = if_else(group1 == "Wildebeest", pos + 0.2, pos),
-         # yend = if_else(group2 == "Warthog", pos, pos - 0.2),       
-         # y = if_else(group1 == "Zebra", pos + 0.2, pos),
-         # yend = if_else(group2 == "Buffalo", pos, pos - 0.2),       
-         # y = if_else(group1 == "Zebra", pos + 0.2, pos),
-         # yend = if_else(group2 == "Warthog", pos, pos - 0.2),       
-         # y = if_else(group1 == "Zebra", pos + 0.2, pos),
-         # yend = if_else(group2 == "Wildebeest", pos, pos - 0.2),
+         y = if_else(group1 == "Wildebeest", pos + 0.2, pos),
+         yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
          x = case_when(
            group1 == "Warthog" &
-             group2 == "Buffalo" ~ max_quartile * 1.3),
-           # group1 == "Wildebeest" &
-           #   group2 == "Buffalo" ~ max_quartile * 1.5),
-           # group1 == "Wildebeest" &
-           #   group2 == "Warthog" ~ max_quartile * 1.9,
-           # group1 == "Zebra" &
-           #   group2 == "Buffalo" ~ max_quartile * 2.2,
-           # group1 == "Zebra" &
-           #   group2 == "Warthog" ~ max_quartile * 2.5,
-           # group1 == "Zebra" &
-           #   group2 == "Wildebeest" ~ max_quartile * 2.8),
+             group2 == "Buffalo" ~ max_quartile * 1.3,
+           group1 == "Wildebeest" &
+             group2 == "Buffalo" ~ max_quartile * 1.5),
          xend = x,
          x_star = 1.15*x,
          y_star = case_when(
            group1 == "Warthog" &
+             group2 == "Buffalo" ~ pos + 0.1,
+           group1 == "Wildebeest" &
              group2 == "Buffalo" ~ pos + 0.1))
-           # group1 == "Wildebeest" &
-           #   group2 == "Buffalo" ~ pos + 0.1))
-           # group1 == "Wildebeest" &
-           #   group2 == "Warthog" ~ pos + 0.1,
-           # group1 == "Zebra" &
-           #   group2 == "Buffalo" ~ pos - 0.1,
-           # group1 == "Zebra" &
-           #   group2 == "Warthog"  ~ pos + 0.1,
-           # group1 == "Zebra" &
-           #   group2 == "Wildebeest" ~ pos - 0.1))
 
 pairs_test %>%
   mutate(taxon = str_replace_all(taxon, "\\*", ""),
          taxon = str_replace_all(taxon, "<br>", " ")) %>% 
   saveRDS(., "RDataRDS/pairs_test.rds")
 
-} else {
-  print("No significant values found at `P ≤ 0.05`")
-  paste("P-values range from:", min(group_signif$p.value), "-", max(group_signif$p.value))
-}
-
+# Add significant stars to the otuplot
 otuplot +
   geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
                inherit.aes = F) +
   geom_text(data = pairs_test_x_y,
             aes(x = x_star, y = y_star), label = "*", inherit.aes = F)
+
+cat("\nSignificant pairs\n")
+readRDS("RDataRDS/pairs_test.rds") %>% 
+  select(-max_quartile, 
+         Taxon = taxon, 
+         Group1 = group1, 
+         Group2 = group2,
+         P_value = p.value,
+         P_adj = p_adj,
+         )
+
+
+# Print error message if not significant.
+} else {
+  print("No significant values found at `P ≤ 0.05`")
+  paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value))
+}
+
 ```
+
+
+# Lefse Biomarkers
+```{r}
+
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+ˆ```{r}
+```
+
