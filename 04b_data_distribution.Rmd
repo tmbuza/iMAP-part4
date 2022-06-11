@@ -14,6 +14,7 @@ library(glue)
 
 # View object content
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+load("../iMAP-part3/RDataRDS/phylo_taxonomy_objects.RData", verbose = T)
 ```
 
 ## Barchats
@@ -25,7 +26,7 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -68,7 +69,7 @@ labs(x = NULL,
   
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -110,7 +111,7 @@ labs(x = NULL,
   coord_flip() + nolegend
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -152,7 +153,7 @@ labs(x = NULL,
   coord_flip() + nolegend
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -194,7 +195,7 @@ labs(x = NULL,
   coord_flip() + nolegend
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -236,7 +237,7 @@ labs(x = NULL,
   coord_flip() + nolegend
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -285,7 +286,7 @@ labs(x = NULL,
 ```{r group_barchart_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -327,7 +328,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -369,7 +370,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -411,7 +412,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -453,7 +454,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -495,7 +496,7 @@ labs(x = NULL,
   centertitle
 
 #-------------------
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -546,7 +547,7 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "kingdom",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -591,7 +592,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "phylum",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -636,7 +637,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "class",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -681,7 +682,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "order",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -726,7 +727,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "family",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -771,7 +772,7 @@ labs(x = NULL,
   coord_flip() + ybreaks5
 
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -824,7 +825,7 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -900,7 +901,7 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -973,7 +974,7 @@ set.seed(110912)
 
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -1042,7 +1043,7 @@ labs(y = NULL,
 ### Flip x-y coordinates and add statistics
 set.seed(110912)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -1108,7 +1109,7 @@ labs(y = NULL,
 
 set.seed(110912)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
@@ -1226,7 +1227,7 @@ Let's establish the `lod`
 ```{r}
 set.seed(110912)
 
-nseqs_per_sample <- readRDS("../iMAP-part3/RDataRDS/mo_otutable_long.rds") %>% 
+nseqs_per_sample <- otutable_long %>% 
   group_by(sample_id) %>%
   summarise(N = sum(count), .groups="drop") %>%
   count(N) %>%
@@ -1242,7 +1243,7 @@ lod
 ```{r fig.dim=c(7, 6)}
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- mo_Rjoined_object %>% 
+taxon_rel_abund <- Rjoined_object %>% 
   rename(group = isolate) %>% 
   filter(level == "genus",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
@@ -1307,7 +1308,7 @@ labs(y = NULL,
 
 ## Gluing OTU ID to taxon
 ```{r fig.dim=c(7, 6)}
-otu_rel_abund <- mo_Rjoined_object %>% 
+otu_rel_abund <- Rjoined_object %>% 
   select(-taxon) %>% 
   rename(group = isolate) %>% 
   rename(taxon = taxon_phylo) %>% 

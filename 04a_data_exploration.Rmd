@@ -10,7 +10,7 @@ library(metagMisc)
 library(microbiome)
 library(microViz)
 
-mo_otutable_long <- readRDS("../iMAP-part3/RDataRDS/mo_otutable_long.rds")
+otutable_long <- readRDS("../iMAP-part3/RDataRDS/phylo_table_long.rds")
 load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 ```
 
@@ -19,7 +19,7 @@ Let's use objects created from `mothur` output.
 
 ## How many reads per sample
 ```{r}
-seqcount_per_sample <- mo_otutable_long %>% 
+seqcount_per_sample <- otutable_long %>% 
   group_by(sample_id) %>% 
   summarise(nseqs = sum(count), .groups = "drop") %>% 
   arrange(nseqs)
@@ -40,7 +40,7 @@ load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 
 
 ```{r}
-(ps <- ps_mo_raw)
+(ps <- ps_raw)
 ```
 
 

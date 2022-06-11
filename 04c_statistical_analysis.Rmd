@@ -11,7 +11,7 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
 set.seed(110912)
 
-nseqs_per_sample <- readRDS("../iMAP-part3/RDataRDS/mo_otutable_long.rds") %>% 
+nseqs_per_sample <- readRDS("../iMAP-part3/RDataRDS/phylo_table_long.rds") %>% 
   group_by(sample_id) %>%
   summarise(N = sum(count), .groups="drop") %>%
   count(N) %>%
@@ -28,7 +28,7 @@ lod
 ```{r}
 set.seed(110912)
 
-otu_rel_abund <- mo_Rjoined_object %>% 
+otu_rel_abund <- Rjoined_object %>% 
   select(-taxon) %>% 
   rename(group = isolate) %>% 
   rename(taxon = taxon_phylo) %>% 
