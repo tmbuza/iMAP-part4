@@ -1,10 +1,18 @@
 # (PART) STATISTICAL ANALYSIS {-}
 
 # Statistical Tests
+> We will use a sub-sample containing same number of OTUs to perform statistical analysis.
 
-## Prepare data for statistical analysis {#stats-data}
-> Note: For statistical analysis we will use a standard subsample across all samples.
+## Kruskal Wallis Test
+- Kruskal Wallis Test is a non-parametric.
+- Assumes no relationship between the members in each group or between groups.
 
+Here we will demonstrate the following:
+- Statistical test: Kruskal-Wallis test
+- Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
+- Correction method: Benjamini-Hochberg (BH).
+
+## Preparing data for statistical analysis {#stats-data}
 ```{r}
 source("R/common.R")
 library(tidyverse)
@@ -14,92 +22,7 @@ library(broom)
 
 set.seed(110912)
 
-metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
-  select(sample_id, group = isolate) %>% 
-  drop_na(group)
-
-phylo_sub_counts_long <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F) %>%
-  rename_all(tolower) %>% 
-  select(-label, -numotus, sample_id = group, starts_with("phylo")) %>%
-  pivot_longer(-sample_id, names_to="otu", values_to="count") %>% 
-  filter(count != 0)
-saveRDS(phylo_sub_counts_long, "RDataRDS/phylo_sub_counts_long.rds")
-
-otutable <- phylo_sub_counts_long %>%
-  pivot_wider(id_cols = otu, names_from = sample_id, values_from = count) %>%
-  mutate_if(is.numeric, ~replace(., is.na(.), 0))
-
-paste("Dimension of the phylotype subsample table table is", 
-      dim(otutable)[1], "rows and", 
-      dim(otutable)[2], "columns") 
-saveRDS(otutable, "RDataRDS/phylo_sub_table.rds")
-
-
-nseqs_per_sample <- phylo_sub_counts_long %>% 
-  group_by(sample_id) %>% 
-  summarise(N = sum(count), .groups = "drop") %>% 
-  count(N) %>% 
-  pull(N)
-
-stopifnot(length(nseqs_per_sample) == 1)
-
-lod <- 100*1/nseqs_per_sample
-
-
-taxlevels <- c("kingdom", "phylum", "class", "order", "family", "genus")
-taxonomy <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.cons.taxonomy", show_col_types = F) %>%
-  rename_all(tolower) %>%
-  select(otu, taxonomy) %>%
-  mutate(otu = tolower(otu),
-         taxonomy = str_replace_all(taxonomy, "\\(\\d+\\)", ""),
-         taxonomy = str_replace_all(taxonomy, ";$", "")) %>%
-  mutate(pretty_otu = str_replace(string = otu,
-                         pattern = "phylo0*",
-                         replacement = "Phylotype ")) %>%
-  relocate(pretty_otu, .after = "otu") %>%
-  separate(taxonomy, into = all_of(taxlevels), sep = ";")
-
-paste("Dimension of the taxonomy table is",
-      dim(taxonomy)[1], "rows and",
-      dim(taxonomy)[2], "columns")
-
-head(taxonomy)[, 1:4] %>% as.data.frame()
-saveRDS(taxonomy, "RDataRDS/sub_phylo_taxonomy.rds")
-
-
-composite <- inner_join(metadata, phylo_sub_counts_long, by = "sample_id") %>% 
-  inner_join(., taxonomy, by = "otu") %>% 
-  group_by(sample_id) %>% 
-  mutate(rel_abund = count/sum(count)) %>% 
-  ungroup() %>% 
-  relocate(count, .before = rel_abund) 
-
-colnames(composite)
-
-## Confirm that rel abund adds to 1 (100%)
-composite %>% 
-  group_by(sample_id) %>% 
-  summarise(total_re_abund = sum(rel_abund))
-
-## Create tidy R object
-Rjoined_sub_object <- composite %>% 
-  pivot_longer(c(all_of(taxlevels), "otu"), names_to = "level", values_to = "taxon") %>% 
-  relocate(rel_abund, .after = taxon) %>% 
-  mutate(taxon = str_replace(string = taxon,
-                            pattern = "(.*)",
-                            replacement = "*\\1*"),
-        taxon = str_replace(string = taxon,
-                            pattern = "\\*(.*)_unclassified\\*",
-                            replacement = "Unclassified<br>*\\1*"),
-        taxon = str_replace_all(taxon, "_", " "),
-        taxon_phylo = glue("{taxon}<br>({pretty_otu})"))
-
-
-saveRDS(composite, "RDataRDS/composite.rds")
-save(Rjoined_sub_object, file = "RDataRDS/Rjoined_sub_object.RData")
-save(composite, Rjoined_sub_object, file = "RDataRDS/saved_objects.RData")
-
-
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 ```
 
 ## Group relative abundance plot
@@ -166,20 +89,7 @@ otuplot
 ```
 
 
-## Kruskal-Wallis test
-- Here we state the hypothesis like so:
-  - H0: Relative abundance of taxon is the same across the group variable.
-  - HA: Not the same
-- Then test the hypothesis using a statistical analysis tool
-- Followed by pairwise test and correction method to reduce the False Positive.
-
-Demo
-
-- Statistical test: Kruskal-Wallis test
-- Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
-- Correction method: Benjamini-Hochberg (BH).
-
-### Genarate testing data
+## Genarate testing data
 ```{r fig.height=8, fig.width=6}
 expt_signif <- otu_group_rel_abund %>% 
   group_by(taxon) %>% 
@@ -192,9 +102,9 @@ expt_signif <- otu_group_rel_abund %>%
   mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
   select(taxon, data, p.value, p_adj, method)
 
-if(min(expt_signif$p.value) < 0.4) {
+if(min(expt_signif$p.value) < 0.05) {
   expt_signif <- expt_signif %>% 
-    filter(p.value < 0.4)
+    filter(p.value < 0.05)
 
 ### Setting quartile limits
 get_max_quartile <- function(x) {
@@ -225,20 +135,20 @@ pairs_test_x_y <- pairs_test %>%
          yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
          x = case_when(
            group1 == "Wildebeest" &
-             group2 == "Buffalo" ~ max_quartile * 1.3,
-           group1 == "Wildebeest" &
-             group2 == "Zebra" ~ max_quartile * 1.6,
-           group1 == "Wildebeest" &
-             group2 == "Warthog" ~ max_quartile * 1.9),
+             group2 == "Buffalo" ~ max_quartile * 1.3),
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ max_quartile * 1.6,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ max_quartile * 1.9),
          xend = x,
-         x_star = 1.1*x,
+         x_star = 1.07*x,
          y_star = case_when(
            group1 == "Wildebeest" &
-             group2 == "Buffalo" ~ pos + 0.1,
-           group1 == "Wildebeest" &
-             group2 == "Zebra" ~ pos + 0.1,
-           group1 == "Wildebeest" &
-             group2 == "Warthog" ~ pos + 0.1))
+             group2 == "Buffalo" ~ pos + 0.05))
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ pos + 0.05,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ pos + 0.05))
 
 pairs_test %>%
   mutate(taxon = str_replace_all(taxon, "\\*", ""),
@@ -271,7 +181,9 @@ print(readRDS("RDataRDS/pairs_test.rds") %>%
 ```
 
 
-## Lefse Biomarkers
+# LEfSe: Linear discriminant analysis Effect Size {#lefse-analysis}
+LEfSe help us determine the significant differences between variables.
+
 ### Prepare data
 ```{r eval=FALSE, include=FALSE}
 metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
@@ -338,18 +250,36 @@ shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
 # }
 
 v1_v2 <- run_lefse("Buffalo", "Wildebeest", "v1_v2")
+```
 
+### Lefse plot
+```{r}
 read_tsv("RDataRDS/mothur_out/bush_v1_v2.1.lefse_summary") %>% 
   mutate(OTU = tolower(OTU)) %>% 
   drop_na(LDA) %>% 
-  inner_join(., taxonomy, by = c("OTU" = "otu")) %>% 
+  inner_join(., Rjoined_sub_object, by = c("OTU" = "otu")) %>% 
+  filter(level == "genus") %>% 
   mutate(LDA = if_else(Class == "Buffalo", -1 * LDA, LDA),
-         genus = fct_reorder(genus, LDA)) %>% 
-  ggplot(aes(x = LDA, y = genus, fill = Class)) +
-  geom_col()
+         taxon_phylo = fct_reorder(taxon_phylo, LDA)) %>% 
+  ggplot(aes(x = LDA, y = taxon_phylo, fill = Class)) +
+  geom_col() +
+  labs(x = "LDA Score (log 10", y = NULL) +
+  scale_x_continuous(limits = c(-50, 25), breaks = seq(-50, 25, by=10)) +
+  scale_fill_manual(name = NULL,
+                  breaks = c("Buffalo",
+                             "Wildebeest"),
+                  labels = c("Variable 1",
+                             "Variable 2"),
+                  values = c("blue4",
+                             "green4")) +
+  theme_classic() +
+  theme(
+    axis.text.y = element_markdown(),
+    legend.text = element_markdown()
+  )
 
 print(read_tsv("RDataRDS/mothur_out/bush_v1_v2.1.lefse_summary", show_col_types = F) %>% 
   filter(pValue <= 0.05))
 ```
 
-
+> Lefse plot does not show much variation. We can create more plot like point range that shows the relative abundance, median etc.
