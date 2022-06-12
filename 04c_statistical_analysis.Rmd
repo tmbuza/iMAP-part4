@@ -271,28 +271,85 @@ print(readRDS("RDataRDS/pairs_test.rds") %>%
 ```
 
 
-# Lefse Biomarkers
+## Lefse Biomarkers
+### Prepare data
+```{r eval=FALSE, include=FALSE}
+metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
+  select(sample_id, isolate) %>% 
+  drop_na(isolate)
+
+shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F)
+  
+
+shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
+# shared_design %>% 
+#   colnames() %>% 
+#   tail
+
+v1_v2 <- shared_design %>% 
+  filter(isolate == "Buffalo" |
+           isolate == "Wildebeest")
+
+v1_v2 %>% 
+  select(-isolate) %>% 
+  write_tsv("RDataRDS//bush_v1_v2.shared")
+
+v1_v2 %>% 
+  select(Group, isolate) %>% 
+  write_tsv("RDataRDS//bush_v1_v2.design")
+
+command <- 'mothur/mothur "#lefse(shared=bush_v1_v2.shared, design=bush_v1_v2.design, inputdir=RDataRDS, outputdir=RDataRDS/mothur_out)"'
+
+system(command)
+```
+
+### Lefse function
 ```{r}
+source("R/lefse.R")
+metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
+  select(sample_id, isolate) %>% 
+  drop_na(isolate)
 
+shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F)
+  
+shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
+# shared_design %>% 
+#   colnames() %>% 
+#   tail
+# 
+# run_lefse <- function(x, y, tag) {
+#   x_y <- shared_design %>%
+#     filter(isolate == x | isolate == y)
+#   
+#   x_y %>% 
+#     select(-isolate) %>% 
+#     write_tsv(glue("RDataRDS//bush_{tag}.shared"))
+#   
+#   x_y %>% 
+#     select(Group, isolate) %>% 
+#     write_tsv(glue("RDataRDS//bush_{tag}.design"))
+#   
+#   command <- glue('mothur/mothur "#lefse(shared=bush_{tag}.shared, design=bush_{tag}.design, inputdir=RDataRDS, outputdir=RDataRDS/mothur_out)"')
+#   
+#   system(command)
+#   
+#   return(glue("bush_{tag}.1.lefse_summary"))
+# 
+# }
+
+v1_v2 <- run_lefse("Buffalo", "Wildebeest", "v1_v2")
+
+read_tsv("RDataRDS/mothur_out/bush_v1_v2.1.lefse_summary") %>% 
+  mutate(OTU = tolower(OTU)) %>% 
+  drop_na(LDA) %>% 
+  inner_join(., taxonomy, by = c("OTU" = "otu")) %>% 
+  mutate(LDA = if_else(Class == "Buffalo", -1 * LDA, LDA),
+         genus = fct_reorder(genus, LDA)) %>% 
+  ggplot(aes(x = LDA, y = genus, fill = Class)) +
+  geom_col()
+
+print(read_tsv("RDataRDS/mothur_out/bush_v1_v2.1.lefse_summary", show_col_types = F) %>% 
+  filter(pValue <= 0.05))
 ```
 
-
-```{r}
-```
-
-
-```{r}
-```
-
-
-```{r}
-```
-
-
-```{r}
-```
-
-
-ˆ```{r}
-```
 
