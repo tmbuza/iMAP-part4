@@ -1,4 +1,4 @@
-# Data Distribution Graphs {#data-distribution}
+# Data Distribution {#data-visuals}
 
 ```{r}
 ## Load libraries and data
@@ -11,1363 +11,769 @@ library(microbiome)
 library(microViz)
 library(RColorBrewer)
 library(glue)
+library(broom)
 
 # View object content
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 load("../iMAP-part3/RDataRDS/phylo_taxonomy_objects.RData", verbose = T)
 ```
 
-## Barchats
+> Note: Some analyses may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
 
-### Stacked sample barcharts filled by taxon
+## Computing limit of detection (LoD)
+```{r}
+set.seed(110912)
 
-> Note: It is important to get a clear insights into the sample variability before grouping by desired variables.
+nseqs_per_sample <- Rjoined_sub_object %>% 
+  group_by(sample_id) %>%
+  summarise(N = sum(count), .groups="drop") %>%
+  count(N) %>%
+  pull(N)
 
+stopifnot(length(nseqs_per_sample) == 1)
+
+lod <- max(100* 1/nseqs_per_sample)
+lod
+```
+
+
+## Prepare taxa abundance data {#taxa-abundance}
+
+### Relative abundance
+```{r}
+## kingdom
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "kingdom",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 0,
+            median = median(rel_abund),
+            .groups = "drop")
+
+kingdom_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------phylum----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "phylum",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+phylum_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------class----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "class",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+class_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------order----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "order",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+order_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------family----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "family",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+family_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------genus----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "genus",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+genus_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+save(kingdom_rel_abund, 
+     phylum_rel_abund, 
+     class_rel_abund, 
+     order_rel_abund, 
+     family_rel_abund, 
+     genus_rel_abund,
+     file = "RDataRDS/taxa_abund_data.RData")
+```
+
+
+### Median relative abundance
 ```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+## kingdom
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "kingdom",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+kingdom_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Kingdom Abundance",
-       fill = "Kingdom") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
-  
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------phylum----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "phylum",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+phylum_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Phylum Abundance",
-       fill = "Phylum") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------class----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "class",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
+  summarise(pool = max(median_rel_abund) < 3,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+class_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Class Abundance",
-       fill = "Class") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------order----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "order",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+order_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Order Abundance",
-       fill = "Order") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------family----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "family",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
+  summarise(pool = max(median_rel_abund) < 3,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+family_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Family Abundance",
-       fill = "Family") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------genus----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-   group_by(sample_id, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+genus_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-   group_by(sample_id, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Genus Abundance",
-       fill = "Genus") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_flip() + nolegend
-```
-
-<br>
-
-### Stacked group barcharts filled by taxon
-
-```{r group_barchart_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "kingdom",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Kingdom Abundance",
-       fill = "Kingdom") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
 
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "phylum",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Phylum Abundance",
-       fill = "Phylum") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
-
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "class",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Class Abundance",
-       fill = "Class") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
-
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "order",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Order Abundance",
-       fill = "Order") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
-
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "family",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 2,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Family Abundance",
-       fill = "Family") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
-
-#-------------------
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
+#-------genus_glued----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  select(-taxon) %>% 
+  rename(taxon = taxon_phylo) %>% 
   filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)
+         ) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
 
-
-taxon_pool <- taxon_rel_abund %>%
+taxon_pool <- otu_rel_abund %>%
   group_by(taxon) %>%
   summarise(pool = max(median_rel_abund) < 2,
             median = median(median_rel_abund),
             .groups = "drop")
 
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
+genus_glued_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
   mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
+  group_by(sample_id, taxon, group) %>% 
   summarise(median_rel_abund = sum(median_rel_abund), 
             median = min(median),
             .groups = "drop") %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = group, y = median_rel_abund, fill = taxon)) +
-  geom_col(position = "fill") +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Genus Abundance",
-       fill = "Genus") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(8, "pt"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.ticks.x = element_blank()) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  centertitle
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+resave(kingdom_median_rel_abund, 
+     phylum_median_rel_abund,  
+     class_median_rel_abund, 
+     order_median_rel_abund,  
+     family_median_rel_abund,  
+     genus_median_rel_abund,
+     genus_glued_median_rel_abund,
+     file = "RDataRDS/taxa_abund_data.RData")
 ```
 
 
-### Grouped taxa barcharts
+## Stacked barchart across samples
 
-```{r taxon_barcharts_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-set.seed(110912)
+```{r}
+load("RDataRDS/taxa_abund_data.RData", verbose = T)
+```
 
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "kingdom",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+```{r stacked_bar_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+kingdom_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Kingdom Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by kingdom",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() + ybreaks5
+  coord_flip()
 
 
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "phylum",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+phylum_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Phylum Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by phylum",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() + ybreaks5
+  coord_flip()
 
 
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "class",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+class_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Class Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by class",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() + ybreaks5
+  coord_flip()
 
 
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "order",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+order_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Order Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by order",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() + ybreaks5
+  coord_flip()
 
 
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "family",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+family_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Family Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by family",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() + ybreaks5
+  coord_flip()
 
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(taxon) %>%
-  summarise(pool = max(median_rel_abund) < 1,
-            median = median(median_rel_abund),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(group, taxon) %>% 
-  summarise(median_rel_abund = sum(median_rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
-  # geom_col(width = 1, position = position_dodge()) +
-  geom_col(width=0.8, position = position_dodge()) +
+genus_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
 labs(x = NULL,
-       y = "Median Relative Abundance (%)",
-       title = "Genus Abundance",
-       fill = "Group") +
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by genus",
+       fill = NULL) +
   theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
         panel.background = element_blank(),
-        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
-        panel.border = element_blank()) +
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
   guides(fill = guide_legend(ncol=1)) +
   scale_y_continuous(expand = c(0, 0)) +
-  centertitle + 
-  coord_flip() 
+  coord_flip()
 ```
 
 
-## Strip chart
+## Exploring genera relative abundance {#genus_abundance}
 
-```{r strip_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-set.seed(110912)
+## Grouped barchart
+```{r}
+genus_median_rel_abund  <- genus_glued_median_rel_abund
+genus_median_rel_abund %>%
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
+  geom_col(width=0.8, position = position_dodge()) +
+  labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Grouped barchart filled by group",
+       fill = NULL) +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+```
 
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = median(median),
-            .groups = "drop")
-
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = rel_abund, fill = group)) +
+## Jitter strip chart
+```{r}
+genus_median_rel_abund %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, fill = group)) +
   geom_jitter(position = position_jitterdodge(
     jitter.width = 0.3, 
     dodge.width = 0.4),
     pch = 21, 
     stroke = 0,
     size = 1.8) +
-  # stat_summary(fun=median, geom = "crossbar",
-  #              position = position_dodge(width = 0.8),
-  #              width = 0.8, 
-  #              size = 0.25,
-  #              show.legend = F) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(x = NULL,
-       y = "Median Relative Abundance (%)") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous() +
-  centertitle + 
-  coord_cartesian(ylim = c(0, 100)) #+ 
-  # coord_flip() 
- 
-```
-
-## Histogram with bins
-
-```{r histogram_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-### Standard boxplot
-
-set.seed(110912)
-
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = median(median),
-            .groups = "drop")
-
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = rel_abund)) +
-  geom_histogram(stat = "identity", bins = 20) +
-
-  # stat_summary(fun=median, geom = "crossbar",
-  #              position = position_dodge(width = 0.8),
-  #              width = 0.8, 
-  #              size = 0.25,
-  #              show.legend = F) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (%)",
-       title = "Standard box-jitter plot") +
-  theme_classic() +
-  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous() +
-  centertitle + 
-  coord_cartesian(ylim = c(0, 100))
-
+  labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Strip Plot",
+    fill = NULL) +
+    theme_classic() +
+    theme(
+      axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+      legend.key.size = unit(12, "pt"),
+      panel.background = element_blank(),
+      panel.grid.major.y =  element_line(colour = "lightgray", size = 0.1),
+      panel.border = element_blank()) +
+    guides(fill = guide_legend(ncol=1)) +
+    scale_x_continuous(expand = c(0, 0))
 ```
 
 
-## Jitter and Boxplot
+## Boxplot
 
-```{r jitter_box_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-### Standard boxplot
-
-set.seed(110912)
-
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = median(median),
-            .groups = "drop")
-
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
+```{r}
+genus_median_rel_abund %>%
   mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = T),
+         taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(x = taxon, y = rel_abund, color = group)) +
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
   geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
-  geom_jitter(position = position_jitterdodge(
-    jitter.width = 0.3,
-    dodge.width = 0.4),
-    pch = 19,
-    stroke = 0,
-    size = 1.8) +
-  # stat_summary(fun=median, geom = "crossbar",
-  #              position = position_dodge(width = 0.8),
-  #              width = 0.8, 
-  #              size = 0.25,
-  #              show.legend = F) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (%)",
-       title = "Standard box-jitter plot") +
-  theme(axis.text.x = element_markdown(angle = 90, hjust = 1, vjust = 1),
-        axis.text.y = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_y_continuous() +
-  centertitle + 
-  coord_cartesian(ylim = c(0, 100))
-
-
-### Flip x-y coordinates and add statistics
-set.seed(110912)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = median(median),
-            .groups = "drop")
-
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
-  geom_jitter(position = position_jitterdodge(
-    jitter.width = 0.3,
-    dodge.width = 0.4),
-    pch = 19) +
-  # stat_summary(fun = median, geom = "crossbar",
-  #              position = position_dodge(width = 0.8),
-  #              width = 0.8,
-  #              size = 0.25,
-  #              show.legend = F) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (%)",
-       title = "Flipped box-jitter plot") +
-  theme_classic() +
-  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        # axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_x_continuous()
- 
-### Jitter plot with statistics
-
-set.seed(110912)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = median(median),
-            .groups = "drop")
-
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
-  geom_jitter(position = position_jitterdodge(
-    jitter.width = 0.5,
-    dodge.width = 0.4),
-    pch = 19) +
-  stat_summary(fun.data = median_hilow, geom = "crossbar",
-               fun.args = list(conf.int = 0.5),
-               position = position_dodge(width = 0.8),
-               width = 0.8,
-               size = 0.25,
-               show.legend = F) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (%)",
-       title = "Flipped jitter plot with statistics") +
-  theme_classic() +
-  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        # axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
-  guides(fill = guide_legend(ncol=1)) +
-  scale_x_continuous()
-
-
- inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  # geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
   # geom_jitter(position = position_jitterdodge(
   #   jitter.width = 0.3,
   #   dodge.width = 0.4),
   #   pch = 19) +
-  stat_summary(fun.data = median_hilow, geom = "pointrange",
-               fun.args = list(conf.int = 0.5),
-               position = position_dodge(width = 0.4),
-               show.legend = T) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    # labels = c("A",
-                    #            "B",
-                    #            "C",
-                    #            "D"),                    
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (%)",
-       title = "Point Range at 50th Percentile") +
-  theme_classic() +
+    # scale_color_manual(name = NULL,
+    #                 breaks = c("Buffalo", "Wildebeest"),
+    #                 labels = c("Buffalo", "Wildebeest"),
+    #                 values = c("blue4", "red")) +
+    labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Simple Boxplot",
+    color = NULL) +
+    theme_classic() +
+    theme_classic() +
   theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
         # axis.text.x = element_markdown(),
         legend.text = element_markdown(),
         legend.key.size = unit(12, "pt"),
         legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 3, r = 3, b = 3, l = 0))
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
   guides(fill = guide_legend(ncol=1)) +
   scale_x_continuous()
- 
 ```
 
-## Log scaled axis
-> Note: Log transformation may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
 
-Let's establish the `lod`
+## Jitter and Boxplot
 ```{r}
-set.seed(110912)
-
-nseqs_per_sample <- otutable_long %>% 
-  group_by(sample_id) %>%
-  summarise(N = sum(count), .groups="drop") %>%
-  count(N) %>%
-  pull(N)
-
-# stopifnot(length(nseqs_per_sample) == 1)
-stopifnot(length(nseqs_per_sample) != 1)
-
-lod <- max(100* 1/nseqs_per_sample)
-lod
-```
-
-```{r fig.dim=c(7, 6)}
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-
-taxon_rel_abund <- Rjoined_object %>% 
-  rename(group = isolate) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
-         ) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- taxon_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 1,
-            median = median(median),
-            .groups = "drop")
-
-inner_join(taxon_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = min(median),
-            .groups = "drop") %>%
+genus_median_rel_abund %>%
   mutate(taxon = factor(taxon),
          taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
-  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>% 
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
- 
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3,
+    dodge.width = 0.4),
+    pch = 19) +
+    # scale_color_manual(name = NULL,
+    #                 breaks = c("Buffalo", "Wildebeest"),
+    #                 labels = c("Buffalo", "Wildebeest"),
+    #                 values = c("blue4", "red")) +
+    labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Box and jitter plot",
+    color = NULL) +
+    theme_classic() +
+    theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+```
+
+
+
+## Point range with log scaled axis {#log-scaled}
+```{r}
+otuplot <- genus_median_rel_abund %>% 
+  # mutate(median_rel_abund = if_else(median_rel_abund == 0, (2/3)*lod, median_rel_abund)) %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
+  # geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
   stat_summary(fun.data = median_hilow, geom = "pointrange",
                fun.args = list(conf.int = 0.5),
-               position = position_dodge(width = 0.6),
+               position = position_dodge(width = 0.5),
                show.legend = T
                ) +
   coord_trans(x = "log10") +
   scale_x_continuous(limits = c(NA, 100),
                      breaks = c(0.1, 1, 10, 100),
                      labels = c(0.1, 1, 10, 100)) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
 labs(y = NULL,
-       x = "Relative Abundance (log10)",
-       title = "Point Range at 50th Percentile") +
+     x = "Relative Abundance (log10)",
+     subtitle = "Point Range at 50th Percentile",
+     color = NULL) +
   theme_classic() +
-  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        # axis.text.x = element_markdown(),
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, vjust = 0.5),
+        axis.text.x = element_markdown(angle = 0, hjust = 0.5),
         legend.text = element_markdown(),
         legend.key.size = unit(12, "pt"),
         legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+        legend.margin = margin(t = 3, r = 3, b = 3, l = 3))
+
+otuplot
 ```
 
-## Gluing OTU ID to taxon
-```{r fig.dim=c(7, 6)}
-otu_rel_abund <- Rjoined_object %>% 
-  select(-taxon) %>% 
-  rename(group = isolate) %>% 
-  rename(taxon = taxon_phylo) %>% 
-  filter(level == "genus",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-taxon_pool <- otu_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
+# Statistical Tests
+> We will use a sub-sample containing same number of OTUs to perform statistical analysis.
+
+## Kruskal Wallis Test
+- Kruskal Wallis Test is a non-parametric.
+- Assumes no relationship between the members in each group or between groups.
+
+Here we will demonstrate the following:
+- Statistical test: Kruskal-Wallis test
+- Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
+- Correction method: Benjamini-Hochberg (BH).
+
+```{r fig.dim=c(6, 7)}
+expt_signif <- genus_median_rel_abund %>% 
   group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = max(median),
-            .groups = "drop")
+  nest() %>% 
+  mutate(expt_tests = map(.x = data,
+                         ~kruskal.test(median_rel_abund ~group, data = .x) %>% 
+                           tidy())) %>%
+  unnest(expt_tests, names_repair = "unique") %>% 
+  ungroup() %>% 
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
+  select(taxon, data, p.value, p_adj, method)
 
-inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = max(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) %>%
-  mutate(rel_abund = if_else(rel_abund == 0, 2/3*lod, rel_abund)) %>% 
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
-  stat_summary(fun.data = median_hilow, geom = "pointrange",
-               fun.args = list(conf.int = 0.5),
-               position = position_dodge(width = 0.6),
-               # show.legend = T
-               ) +
-  coord_trans(x = "log10") +
-  scale_x_continuous(limits = c(NA, 100),
-                     breaks = c(0.1, 1, 10, 100),
-                     labels = c(0.1, 1, 10, 100)) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),
-                    labels = c("Buffalo",
-                               "Warthog",
-                               "Wildebeest",
-                               "Zebra"),                   
-                    values = c("blue",
-                               "red",
-                               "green",
-                               "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (log10)",
-       title = "Point Range at 50th Percentile") +
-  theme_classic() +
-  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
-        axis.text.x = element_markdown(),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 3, r = 0, b = 3, l = 0))
+if(min(expt_signif$p.value) < 0.2) {
+  expt_signif <- expt_signif %>% 
+    filter(p.value < 0.2)
+
+print(paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value)))
+
+### Setting quartile limits
+get_max_quartile <- function(x) {
+  x %>% 
+    group_by(group) %>% 
+    summarise(third_q = quantile(median_rel_abund, prob = 0.75), .groups = "drop") %>%
+    summarise(max_quartile = max(third_q)) %>% 
+    pull(max_quartile)
+}
+
+### Pairwise comparison
+pairs_test <- expt_signif %>% 
+  mutate(max_quartile = map_dbl(.x = data, ~get_max_quartile(.x))) %>% 
+  mutate(pairwise_tests = map(.x = data,
+                              ~pairwise.wilcox.test(x = .x$median_rel_abund,
+                                                    g = .x$group,
+                                                    p.adjust.method = "BH") %>%
+                                tidy())) %>%
+  unnest(pairwise_tests, names_repair = "unique") %>% 
+  select(taxon, group1, group2, p.value = p.value...3, p_adj, max_quartile)
+
+# Defining x-y and stars coordinates
+pairs_test_x_y <- pairs_test %>% 
+  select(taxon, group1, group2, p.value, max_quartile) %>% 
+  mutate(pos = as.numeric(taxon),
+         y = if_else(
+           group1 == "Wildebeest", pos + 0.2, pos),
+         yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
+         x = case_when(
+           group1 == "Wildebeest" &
+             group2 == "Buffalo" ~ max_quartile * 1.3),
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ max_quartile * 1.6,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ max_quartile * 1.9),
+         xend = x,
+         x_star = 1.1*x,
+         y_star = case_when(
+           group1 == "Wildebeest" &
+             group2 == "Buffalo" ~ pos + 0.05))
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ pos + 0.05,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ pos + 0.05))
+
+pairs_test %>%
+  mutate(taxon = str_replace_all(taxon, "\\*", ""),
+         taxon = str_replace_all(taxon, "<br>", " ")) %>% 
+  saveRDS(., "RDataRDS/pairs_test.rds")
+
+# Add significant stars to the otuplot
+print(otuplot +
+  geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
+               inherit.aes = F) +
+  geom_text(data = pairs_test_x_y,
+            aes(x = x_star, y = y_star), label = "*", inherit.aes = F))
+
+# Significant pairs table
+print(readRDS("RDataRDS/pairs_test.rds") %>% 
+  select(-max_quartile, 
+         Taxon = taxon, 
+         Group1 = group1, 
+         Group2 = group2,
+         P_value = p.value,
+         P_adj = p_adj,
+         ))
+
+# Print error message if not significant.
+} else {
+  print("No significant values found at `P ≤ 0.05`")
+  paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value))
+}
+
 ```
-
-

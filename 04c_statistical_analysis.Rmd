@@ -33,6 +33,7 @@ otu_rel_abund <- Rjoined_sub_object %>%
   select(-taxon) %>% 
   rename(taxon = taxon_phylo) %>% 
   filter(level == "genus",
+         group == "Buffalo" | group == "Wildebeest",
          !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)) %>% 
   group_by(sample_id, taxon, group) %>% 
   summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
@@ -57,7 +58,7 @@ otu_group_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>%
          taxon = fct_shift(taxon, n = 0)) 
 
 ## Plot group relative abundance
-otuplot <- otu_group_rel_abund %>% 
+otuplot <- genus_median_rel_abund %>% 
   mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>%
   ggplot(aes(y = taxon, x = rel_abund, color = group)) +
   geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
@@ -91,11 +92,11 @@ otuplot
 
 ## Genarate testing data
 ```{r fig.height=8, fig.width=6}
-expt_signif <- otu_group_rel_abund %>% 
+expt_signif <- genus_median_rel_abund %>% 
   group_by(taxon) %>% 
   nest() %>% 
   mutate(expt_tests = map(.x = data,
-                         ~kruskal.test(rel_abund~group, data = .x) %>% 
+                         ~kruskal.test(median_rel_abund ~group, data = .x) %>% 
                            tidy())) %>%
   unnest(expt_tests, names_repair = "unique") %>% 
   ungroup() %>% 

@@ -4,3 +4,26 @@
 - Raw count OTU tables
 
 
+```{r}
+library(tidyverse)
+library(readxl)
+
+nmds <- read_tsv(file="raw_data/schubert.braycurtis.nmds_2d.axes")
+metadata <- read_excel(path="raw_data/schubert.metadata.xlsx")
+metadata_nmds <- inner_join(metadata, nmds, by=c('sample_id'='group')) %>%
+  mutate(disease_stat = factor(disease_stat,
+                               levels=c("DiarrhealControl",
+                                        "Case",
+                                        "NonDiarrhealControl")
+                               )
+         )
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
