@@ -18,12 +18,17 @@ load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
 load("../iMAP-part3/RDataRDS/phylo_taxonomy_objects.RData", verbose = T)
 ```
 
-> Note: Some analyses may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
 
-## Computing limit of detection (LoD)
-```{r}
-set.seed(110912)
+```{block, type="tmbinfo", echo=T}
+## Limit of detection (LoD)
 
+> **Heads up**: Some analyses may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
+
+Whenever applicable use the command below to compute LoD:
+
+```
+
+```{r echo=TRUE}
 nseqs_per_sample <- Rjoined_sub_object %>% 
   group_by(sample_id) %>%
   summarise(N = sum(count), .groups="drop") %>%
@@ -33,15 +38,20 @@ nseqs_per_sample <- Rjoined_sub_object %>%
 stopifnot(length(nseqs_per_sample) == 1)
 
 lod <- max(100* 1/nseqs_per_sample)
-lod
 ```
 
 
-## Prepare taxa abundance data {#taxa-abundance}
+## Prepare input data {#taxa-abundance}
+Example may include:
 
-### Relative abundance
+- Taxa relative abundance
+- Taxa mean relative abundance
+- Taxa median relative abundance
+
 ```{r}
-## kingdom
+## Taxa relative abundance
+
+#-------kingdom----------------
 otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "kingdom",
          group == "Buffalo" | group == "Wildebeest",
@@ -198,12 +208,11 @@ save(kingdom_rel_abund,
      family_rel_abund, 
      genus_rel_abund,
      file = "RDataRDS/taxa_abund_data.RData")
-```
 
 
-### Median relative abundance
-```{r sample_barchat_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
-## kingdom
+## Taxa median relative abundance
+
+#-------kingdom----------------
 otu_rel_abund <- Rjoined_sub_object %>% 
   filter(level == "kingdom",
          group == "Buffalo" | group == "Wildebeest",
@@ -404,14 +413,9 @@ resave(kingdom_median_rel_abund,
      file = "RDataRDS/taxa_abund_data.RData")
 ```
 
+## Quick glimpse on taxa abundance across samples {#taxa-by-samples}
 
-## Stacked barchart across samples
-
-```{r}
-load("RDataRDS/taxa_abund_data.RData", verbose = T)
-```
-
-```{r stacked_bar_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=4}
+```{r stacked_bar_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=2}
 kingdom_median_rel_abund %>%
   ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
   geom_col(position = "fill") +
@@ -520,9 +524,9 @@ labs(x = NULL,
 ```
 
 
-## Exploring genera relative abundance {#genus_abundance}
+## Genera relative abundance {#genus_abundance}
 
-## Grouped barchart
+### Grouped barchart
 ```{r}
 genus_median_rel_abund  <- genus_glued_median_rel_abund
 genus_median_rel_abund %>%
@@ -530,7 +534,7 @@ genus_median_rel_abund %>%
   geom_col(width=0.8, position = position_dodge()) +
   labs(x = NULL,
        y = "Relative Abundance (%)",
-      subtitle = "Grouped barchart filled by group",
+      subtitle = "Grouped Barchart",
        fill = NULL) +
   theme_classic() +
   theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
@@ -546,7 +550,7 @@ genus_median_rel_abund %>%
 ```
 
 
-## Jitter strip chart
+### Jitter strip chart
 ```{r}
 genus_median_rel_abund %>%
   ggplot(aes(y = taxon, x = median_rel_abund, fill = group)) +
@@ -559,7 +563,7 @@ genus_median_rel_abund %>%
   labs(
     y = NULL,
     x = "Relative Abundance (%)",
-    title = "Strip Plot",
+    title = "Jitter Strip Plot",
     fill = NULL) +
     theme_classic() +
     theme(
@@ -573,19 +577,15 @@ genus_median_rel_abund %>%
 ```
 
 
-## Boxplot
+### Box plot
 
-```{r}
+```{r boxplot_fig}
 genus_median_rel_abund %>%
   mutate(taxon = factor(taxon),
          taxon = fct_reorder(taxon, median, .desc = F),
          taxon = fct_shift(taxon, n = 0)) %>%
   ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
   geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
-  # geom_jitter(position = position_jitterdodge(
-  #   jitter.width = 0.3,
-  #   dodge.width = 0.4),
-  #   pch = 19) +
     # scale_color_manual(name = NULL,
     #                 breaks = c("Buffalo", "Wildebeest"),
     #                 labels = c("Buffalo", "Wildebeest"),
@@ -593,7 +593,7 @@ genus_median_rel_abund %>%
     labs(
     y = NULL,
     x = "Relative Abundance (%)",
-    title = "Simple Boxplot",
+    title = "Simple BoxPlot",
     color = NULL) +
     theme_classic() +
     theme_classic() +
@@ -602,14 +602,14 @@ genus_median_rel_abund %>%
         legend.text = element_markdown(),
         legend.key.size = unit(12, "pt"),
         legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+        legend.margin = margin(t = 2, r = 2, b = 2, l = 2)) +
   guides(fill = guide_legend(ncol=1)) +
   scale_x_continuous()
 ```
 
 
-## Jitter and Boxplot
-```{r}
+### Jitter on Boxplot
+```{r box_jitter_fig}
 genus_median_rel_abund %>%
   mutate(taxon = factor(taxon),
          taxon = fct_reorder(taxon, median, .desc = F),
@@ -627,7 +627,7 @@ genus_median_rel_abund %>%
     labs(
     y = NULL,
     x = "Relative Abundance (%)",
-    title = "Box and jitter plot",
+    title = "Jitter on BoxPlot",
     color = NULL) +
     theme_classic() +
     theme_classic() +
@@ -643,8 +643,8 @@ genus_median_rel_abund %>%
 
 
 
-## Point range with log scaled axis {#log-scaled}
-```{r}
+### Point range with log scaled axis {#log-scaled}
+```{r log_scaled_fig}
 otuplot <- genus_median_rel_abund %>% 
   # mutate(median_rel_abund = if_else(median_rel_abund == 0, (2/3)*lod, median_rel_abund)) %>%
   ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
@@ -660,7 +660,7 @@ otuplot <- genus_median_rel_abund %>%
                      labels = c(0.1, 1, 10, 100)) +
 labs(y = NULL,
      x = "Relative Abundance (log10)",
-     subtitle = "Point Range at 50th Percentile",
+     subtitle = "Point range plot at 50th percentile with \nlog10 scaled axis, outliers are removed",
      color = NULL) +
   theme_classic() +
   theme_classic() +
@@ -669,7 +669,7 @@ labs(y = NULL,
         legend.text = element_markdown(),
         legend.key.size = unit(12, "pt"),
         legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 3, r = 3, b = 3, l = 3))
+        legend.margin = margin(t = 2, r = 2, b = 2, l = 2))
 
 otuplot
 ```
@@ -686,7 +686,7 @@ Here we will demonstrate the following:
 - Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
 - Correction method: Benjamini-Hochberg (BH).
 
-```{r fig.dim=c(6, 7)}
+```{r kruskal_wallis_fig, fig.dim=c(6, 7)}
 expt_signif <- genus_median_rel_abund %>% 
   group_by(taxon) %>% 
   nest() %>% 
@@ -702,7 +702,9 @@ if(min(expt_signif$p.value) < 0.2) {
   expt_signif <- expt_signif %>% 
     filter(p.value < 0.2)
 
-print(paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value)))
+cat(paste("The computed P-values for this test range from:\n"),
+paste(min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
 
 ### Setting quartile limits
 get_max_quartile <- function(x) {
@@ -739,7 +741,7 @@ pairs_test_x_y <- pairs_test %>%
            # group1 == "Wildebeest" &
            #   group2 == "Warthog" ~ max_quartile * 1.9),
          xend = x,
-         x_star = 1.1*x,
+         x_star = 1.15*x,
          y_star = case_when(
            group1 == "Wildebeest" &
              group2 == "Buffalo" ~ pos + 0.05))
@@ -755,12 +757,13 @@ pairs_test %>%
 
 # Add significant stars to the otuplot
 print(otuplot +
-  geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
+        geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
                inherit.aes = F) +
-  geom_text(data = pairs_test_x_y,
-            aes(x = x_star, y = y_star), label = "*", inherit.aes = F))
+        geom_text(data = pairs_test_x_y,
+            aes(x = x_star, y = y_star), label = "*", inherit.aes = F) +
+        labs(subtitle = "Point range plot with \nstatistically significant stars"))
 
-# Significant pairs table
+# Significant pairs
 print(readRDS("RDataRDS/pairs_test.rds") %>% 
   select(-max_quartile, 
          Taxon = taxon, 
@@ -772,8 +775,61 @@ print(readRDS("RDataRDS/pairs_test.rds") %>%
 
 # Print error message if not significant.
 } else {
-  print("No significant values found at `P ≤ 0.05`")
-  paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value))
+cat("Sorry, no significant values found at 'P ≤ 0.05'\n", 
+paste("P-values range from:",
+      min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
 }
 
 ```
+
+
+## LEfSe: Linear discriminant analysis Effect Size {#lefse-analysis}
+> LEfSe determines the significant differences between variables.
+
+```{r lefse_fig}
+source("R/lefse.R")
+metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
+  select(sample_id, isolate) %>% 
+  drop_na(isolate)
+
+shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F)
+  
+shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
+
+run_lefse("Buffalo", "Wildebeest", "buff_wilde")
+
+read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  mutate(OTU = tolower(OTU)) %>% 
+  drop_na(LDA) %>% 
+  inner_join(., Rjoined_sub_object, by = c("OTU" = "otu")) %>% 
+  filter(level == "genus") %>% 
+  mutate(LDA = if_else(Class == "Buffalo", -1 * LDA, LDA),
+         taxon_phylo = fct_reorder(taxon_phylo, LDA)) %>% 
+  ggplot(aes(x = LDA, y = taxon_phylo, fill = Class)) +
+  geom_col() +
+  labs(x = "LDA Score (log 10)", y = NULL) +
+  scale_x_continuous(limits = c(-50, 25), breaks = seq(-50, 25, by=10)) +
+  scale_fill_manual(name = NULL,
+                  breaks = c("Buffalo",
+                             "Wildebeest"),
+                  labels = c("Variable 1",
+                             "Variable 2"),
+                  values = c("blue4",
+                             "green4")) +
+  theme_classic() +
+  theme(
+    axis.text.y = element_markdown(),
+    legend.text = element_markdown()
+  )
+
+print(read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  filter(pValue <= 0.05))
+```
+
+```{bash}
+rm -f ./mothur*.logfile
+```
+
+
+> Lefse plot does not show much of the variation. We can create more plot like point range that shows the relative abundance, median etc.
