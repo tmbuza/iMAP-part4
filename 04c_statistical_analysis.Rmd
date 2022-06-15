@@ -5,6 +5,14 @@
 
 ## Load libraries and data
 ```{r}
+source("R/common.R")
+source("R/lefse.R")
+library(tidyverse)
+library(ggtext)
+library(RColorBrewer)
+library(glue)
+library(broom)
+
 load("RDataRDS/taxa_abund_data.RData", verbose = T)
 ```
 
@@ -107,6 +115,7 @@ paste("P-values range from:",
 
 ## LEfSe: Linear discriminant analysis Effect Size {#lefse-analysis}
 > LEfSe determines the significant differences between variables.
+
 ```{r lefse_fig}
 source("R/lefse.R")
 metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
