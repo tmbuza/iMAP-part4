@@ -25,7 +25,6 @@ load("../iMAP-part3/RDataRDS/phylo_taxonomy_objects.RData", verbose = T)
 > **Heads up**: Some analyses may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
 
 Whenever applicable use the command below to compute LoD:
-
 ```
 
 ```{r echo=TRUE}
@@ -672,9 +671,7 @@ labs(y = NULL,
         legend.margin = margin(t = 2, r = 2, b = 2, l = 2))
 
 otuplot
-```
 
-```{r}
 resave(otuplot, file = "RDataRDS/taxa_abund_data.RData")
 ```
 

@@ -1,7 +1,12 @@
 # (PART) STATISTICAL ANALYSIS {-}
 
 # Statistical Tests
-> We will use a sub-sample containing same number of OTUs to perform statistical analysis.
+> We will use a sub-sample to perform statistical analysis.
+
+## Load libraries and data
+```{r}
+load("RDataRDS/taxa_abund_data.RData", verbose = T)
+```
 
 ## Kruskal Wallis Test
 - Kruskal Wallis Test is a non-parametric.
@@ -12,86 +17,7 @@ Here we will demonstrate the following:
 - Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
 - Correction method: Benjamini-Hochberg (BH).
 
-## Preparing data for statistical analysis {#stats-data}
-```{r}
-source("R/common.R")
-library(tidyverse)
-library(ggtext)
-library(glue)
-library(broom)
-
-set.seed(110912)
-
-load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-```
-
-## Group relative abundance plot
-```{r fig.height=8, fig.width=6}
-set.seed(110912)
-
-otu_rel_abund <- Rjoined_sub_object %>% 
-  select(-taxon) %>% 
-  rename(taxon = taxon_phylo) %>% 
-  filter(level == "genus",
-         group == "Buffalo" | group == "Wildebeest",
-         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)) %>% 
-  group_by(sample_id, taxon, group) %>% 
-  summarise(rel_abund = 100*sum(rel_abund), .groups = "drop")
-
-taxon_pool <- otu_rel_abund %>%
-  group_by(group, taxon) %>%
-  summarise(median = median(rel_abund), .groups = "drop") %>%
-  group_by(taxon) %>% 
-  summarise(pool = max(median) < 3,
-            median = max(median),
-            .groups = "drop")
-
-## Group relative abundance
-otu_group_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
-  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
-  group_by(sample_id, group, taxon) %>% 
-  summarise(rel_abund = sum(rel_abund), 
-            median = max(median),
-            .groups = "drop") %>%
-  mutate(taxon = factor(taxon),
-         taxon = fct_reorder(taxon, median, .desc = F),
-         taxon = fct_shift(taxon, n = 0)) 
-
-## Plot group relative abundance
-otuplot <- genus_median_rel_abund %>% 
-  mutate(rel_abund = if_else(rel_abund == 0, (2/3)*lod, rel_abund)) %>%
-  ggplot(aes(y = taxon, x = rel_abund, color = group)) +
-  geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
-  stat_summary(fun.data = median_hilow, geom = "pointrange",
-               fun.args = list(conf.int = 0.2),
-               position = position_dodge(width = 0.5),
-               show.legend = T
-               ) +
-  coord_trans(x = "log10") +
-  scale_x_continuous(limits = c(NA, 100),
-                     breaks = c(0.1, 1, 10, 100),
-                     labels = c(0.1, 1, 10, 100)) +
-  scale_color_manual(name = NULL,
-                    breaks = c("Wildebeest", "Buffalo", "Zebra", "Warthog"),
-                    labels = c("Wildebeest", "Buffalo", "Zebra", "Warthog"),
-                    values = c("blue1", "red", "green2", "purple")) +
-labs(y = NULL,
-       x = "Relative Abundance (log10)",
-       title = "Group Point Range at 50th Percentile") +
-  theme_classic() +
-  theme(axis.text.y = element_markdown(angle = 0, vjust = 0.5),
-        axis.text.x = element_markdown(angle = 0, hjust = 0.5),
-        legend.text = element_markdown(),
-        legend.key.size = unit(12, "pt"),
-        legend.background = element_rect(colour = "gray", fill = NA),
-        legend.margin = margin(t = 3, r = 3, b = 3, l = 3))
-
-otuplot
-```
-
-
-## Genarate testing data
-```{r fig.height=8, fig.width=6}
+```{r kruskal_wallis_fig, fig.dim=c(6, 7)}
 expt_signif <- genus_median_rel_abund %>% 
   group_by(taxon) %>% 
   nest() %>% 
@@ -102,31 +28,30 @@ expt_signif <- genus_median_rel_abund %>%
   ungroup() %>% 
   mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
   select(taxon, data, p.value, p_adj, method)
-
-if(min(expt_signif$p.value) < 0.05) {
+if(min(expt_signif$p.value) < 0.2) {
   expt_signif <- expt_signif %>% 
-    filter(p.value < 0.05)
-
+    filter(p.value < 0.2)
+cat(paste("The computed P-values for this test range from:\n"),
+paste(min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
 ### Setting quartile limits
 get_max_quartile <- function(x) {
   x %>% 
     group_by(group) %>% 
-    summarise(third_q = quantile(rel_abund, prob = 0.75), .groups = "drop") %>%
+    summarise(third_q = quantile(median_rel_abund, prob = 0.75), .groups = "drop") %>%
     summarise(max_quartile = max(third_q)) %>% 
     pull(max_quartile)
 }
-
 ### Pairwise comparison
 pairs_test <- expt_signif %>% 
   mutate(max_quartile = map_dbl(.x = data, ~get_max_quartile(.x))) %>% 
   mutate(pairwise_tests = map(.x = data,
-                              ~pairwise.wilcox.test(x = .x$rel_abund,
+                              ~pairwise.wilcox.test(x = .x$median_rel_abund,
                                                     g = .x$group,
                                                     p.adjust.method = "BH") %>%
                                 tidy())) %>%
   unnest(pairwise_tests, names_repair = "unique") %>% 
   select(taxon, group1, group2, p.value = p.value...3, p_adj, max_quartile)
-
 # Defining x-y and stars coordinates
 pairs_test_x_y <- pairs_test %>% 
   select(taxon, group1, group2, p.value, max_quartile) %>% 
@@ -142,7 +67,7 @@ pairs_test_x_y <- pairs_test %>%
            # group1 == "Wildebeest" &
            #   group2 == "Warthog" ~ max_quartile * 1.9),
          xend = x,
-         x_star = 1.07*x,
+         x_star = 1.15*x,
          y_star = case_when(
            group1 == "Wildebeest" &
              group2 == "Buffalo" ~ pos + 0.05))
@@ -150,20 +75,18 @@ pairs_test_x_y <- pairs_test %>%
            #   group2 == "Zebra" ~ pos + 0.05,
            # group1 == "Wildebeest" &
            #   group2 == "Warthog" ~ pos + 0.05))
-
 pairs_test %>%
   mutate(taxon = str_replace_all(taxon, "\\*", ""),
          taxon = str_replace_all(taxon, "<br>", " ")) %>% 
   saveRDS(., "RDataRDS/pairs_test.rds")
-
 # Add significant stars to the otuplot
 print(otuplot +
-  geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
+        geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
                inherit.aes = F) +
-  geom_text(data = pairs_test_x_y,
-            aes(x = x_star, y = y_star), label = "*", inherit.aes = F))
-
-# Significant pairs table
+        geom_text(data = pairs_test_x_y,
+            aes(x = x_star, y = y_star), label = "*", inherit.aes = F) +
+        labs(subtitle = "Point range plot with \nstatistically significant stars"))
+# Significant pairs
 print(readRDS("RDataRDS/pairs_test.rds") %>% 
   select(-max_quartile, 
          Taxon = taxon, 
@@ -172,14 +95,57 @@ print(readRDS("RDataRDS/pairs_test.rds") %>%
          P_value = p.value,
          P_adj = p_adj,
          ))
-
 # Print error message if not significant.
 } else {
-  print("No significant values found at `P ≤ 0.05`")
-  paste("P-values range from:", min(expt_signif$p.value), "-", max(expt_signif$p.value))
+cat("Sorry, no significant values found at 'P ≤ 0.05'\n", 
+paste("P-values range from:",
+      min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
 }
-
 ```
 
 
+## LEfSe: Linear discriminant analysis Effect Size {#lefse-analysis}
+> LEfSe determines the significant differences between variables.
+```{r lefse_fig}
+source("R/lefse.R")
+metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
+  select(sample_id, isolate) %>% 
+  drop_na(isolate)
+shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F)
+  
+shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
+run_lefse("Buffalo", "Wildebeest", "buff_wilde")
+read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  mutate(OTU = tolower(OTU)) %>% 
+  drop_na(LDA) %>% 
+  inner_join(., Rjoined_sub_object, by = c("OTU" = "otu")) %>% 
+  filter(level == "genus") %>% 
+  mutate(LDA = if_else(Class == "Buffalo", -1 * LDA, LDA),
+         taxon_phylo = fct_reorder(taxon_phylo, LDA)) %>% 
+  ggplot(aes(x = LDA, y = taxon_phylo, fill = Class)) +
+  geom_col() +
+  labs(x = "LDA Score (log 10)", y = NULL) +
+  scale_x_continuous(limits = c(-50, 25), breaks = seq(-50, 25, by=10)) +
+  scale_fill_manual(name = NULL,
+                  breaks = c("Buffalo",
+                             "Wildebeest"),
+                  labels = c("Variable 1",
+                             "Variable 2"),
+                  values = c("blue4",
+                             "green4")) +
+  theme_classic() +
+  theme(
+    axis.text.y = element_markdown(),
+    legend.text = element_markdown()
+  )
+print(read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  filter(pValue <= 0.05))
+```
 
+```{bash}
+rm -f ./mothur*.logfile
+```
+
+
+> Lefse plot does not show much of the variation. We can create more plot like point range that shows the relative abundance, median etc.
