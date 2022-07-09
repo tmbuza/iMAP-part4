@@ -4,7 +4,7 @@ bookdown::gitbook:
     toc:
       before:
       after:
-    edit: https://github.com/tmbuza/microbiome-part1/edit/main/%s
+    edit: https://github.com/DataInsights/edit/main/%s
     download: ["pdf", "epub"]
 
 bookdown::pdf_book:
@@ -21,7 +21,7 @@ bookdown::bs4_book:
   footnotes_inline: false
   split_bib: false
   repo:
-    base: https://github.com/tmbuza/microbiome-part1
+    base: https://github.com/DataInsights/
     branch: main
     icon: "fas fa-air-freshener"
   theme:

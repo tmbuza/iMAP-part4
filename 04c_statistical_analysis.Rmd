@@ -118,6 +118,8 @@ paste("P-values range from:",
 
 ```{r lefse_fig}
 source("R/lefse.R")
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
 metadata <- readRDS("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/RDataRDS/mo_metadata.rds") %>% 
   select(sample_id, isolate) %>% 
   drop_na(isolate)
@@ -125,6 +127,7 @@ shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1
   
 shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
 run_lefse("Buffalo", "Wildebeest", "buff_wilde")
+
 read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
   mutate(OTU = tolower(OTU)) %>% 
   drop_na(LDA) %>% 

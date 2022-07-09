@@ -1,0 +1,93 @@
+# (PART) MICROBIAL DIVERSITY {-}
+# Alpha Diversity Analysis {#alpha-diversity}
+
+## Sequence Count {#seq-count}
+```{r}
+library(vegan)
+library(tidyverse)
+
+set.seed(2022)
+
+shared <- read_tsv("RDataRDS/bush_buff_wilde.shared", show_col_types = F) %>%
+select(Group, starts_with("Phylo")) %>% 
+  pivot_longer(-Group) %>%
+  group_by(Group) %>%
+  mutate(total = sum(value)) %>%
+  filter(total > 2000) %>%
+  # group_by(name) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+# Getting a random sample
+rand <- shared %>%
+  uncount(value) %>%
+  mutate(name = sample(name)) %>%
+  count(Group, name, name="value")
+```
+
+## Diversity  functions
+> These function are save in `alpha.R`.. Use `source("alpha.R)` to import to the environment.
+
+```{r}
+richness <- function(x) {
+  sum(x > 0)
+}
+
+shannon <- function(x) {
+  rabund <- x[x > 0]/sum(x)
+  -sum(rabund * log(rabund))
+}
+
+simpson <- function(x) {
+  n <- sum(x)
+  1 - sum((x/n)^2)
+}
+
+```
+
+
+## Compute and plot alpha diversity
+
+### Using original count data
+```{r}
+source("R/alpha.R")
+shared %>%
+  group_by(Group) %>%
+  summarise(sobs = richness(value),
+            shannon = shannon(value),
+            simpson = simpson(value),
+            invsimpson = 1/simpson,
+            n = sum(value)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=2, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+### Using randomly sampled count data
+```{r}
+source("R/alpha.R")
+library(vegan)
+rand %>%
+  group_by(Group) %>%
+  summarise(sobs = specnumber(value),
+            shannon = diversity(value, index="shannon"),
+            simpson = diversity(value, index="simpson"),
+            invsimpson = 1/simpson,
+            n = sum(value)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=2, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+

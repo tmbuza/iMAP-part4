@@ -1,0 +1,306 @@
+# (PART) MICROBIAL DIVERSITY {-}
+# Alpha Diversity Analysis {#alpha-diversity}
+
+```{r include=FALSE}
+library(vegan)
+library(tidyverse)
+library(phyloseq)
+knitr::opts_chunk$set(echo = F)
+path_shared <- "~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared"
+```
+
+## Sequence Count {#seq-count}
+```{r}
+set.seed(2022)
+
+shared <- read_tsv(path_shared, show_col_types = F) %>%
+select(sample_id = Group, starts_with("Phylo")) %>% 
+  pivot_longer(-sample_id, names_to = "otu", values_to = "count") %>%
+  group_by(sample_id) %>%
+  mutate(total = sum(count)) %>%
+  filter(total > 0) %>%
+  group_by(otu) %>%
+  mutate(total = sum(count)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+shared %>% 
+  group_by(sample_id) %>% 
+  summarise(count = sum(count), .groups = "drop") %>% 
+  kableExtra::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
+```
+
+```{r include=FALSE}
+## Random sampling
+rand <- shared %>%
+  uncount(count) %>%
+  mutate(otu = sample(otu)) %>%
+  count(sample_id, otu, name = "count")
+
+rand %>% 
+  group_by(sample_id) %>% 
+  summarise(count = sum(count), .groups = "drop") %>% 
+  kableExtra::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
+```
+
+## Diversity plots
+```{r}
+source("R/alpha.R")
+set.seed(2022)
+
+div_metrics <- shared %>%
+  group_by(sample_id) %>%
+  summarise(sobs = richness(count),
+            shannon = shannon(count),
+            simpson = simpson(count),
+            invsimpson = 1/simpson,
+            n = sum(count))
+
+div_metrics %>% 
+  saveRDS("RDataRDS/div_metrics.rds")
+```
+
+### Using original count
+```{r message=FALSE, warning=FALSE}
+readRDS("RDataRDS/div_metrics.rds") %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=4, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+### Using randomly sampled count
+```{r}
+source("R/alpha.R")
+library(vegan)
+set.seed(2022)
+
+rand %>%
+  group_by(sample_id) %>%
+  summarise(sobs = richness(count),
+            shannon = shannon(count),
+            simpson = simpson(count),
+            invsimpson = 1/simpson,
+            n = sum(count)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=4, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+
+### Using phyloseq object
+```{r fig.dim=c(8, 8)}
+library(phyloseq)
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = F)
+ps <- ps_raw
+
+set.seed(1234)
+
+alpha_div_tbl <- data.frame(
+  "sample_id" = sample_names(ps),
+  "group" = phyloseq::sample_data(ps)$isolate,
+  "n_read" = phyloseq::sample_sums(ps),
+  "sobs" = phyloseq::estimate_richness(ps, measures = "Observed"),
+  "chao1" = phyloseq::estimate_richness(ps, measures = "Chao1"),
+  "simpson" = phyloseq::estimate_richness(ps, measures = "Simpson"),
+  "invsimpson" = phyloseq::estimate_richness(ps, measures = "InvSimpson"),
+  "shannon" = phyloseq::estimate_richness(ps, measures = "Shannon"),
+  "phylodiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(ps)))), 
+                           tree = phyloseq::phy_tree(ps))[, 1])
+
+saveRDS(alpha_div_tbl, file = "RDataRDS/ps_alpha_div_tbl.rds")
+
+readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+  rename(sobs = Observed, 
+         chao = chao1.Chao1, 
+         simpson = Simpson, 
+         invsimpson = InvSimpson, 
+         shannon = Shannon) %>% 
+  select(-group, -chao1.se.chao1) %>%
+  pivot_longer(cols=c(sobs, 
+                      chao, 
+                      simpson, 
+                      invsimpson, 
+                      shannon, 
+                      phylodiv),
+               names_to="metric", values_to = "value") %>% 
+  ggplot(aes(x = n_read, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=6, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+## Sampling coverage 
+```{r}
+sampling_coverage <- shared %>% 
+  group_by(sample_id) %>% 
+summarise(n_seq = sum(count)) %>% 
+arrange(n_seq)
+```
+
+### Histogram
+```{r}
+sampling_coverage %>%
+  ggplot(aes(x = n_seq)) +
+  geom_histogram()
+```
+
+
+### Line plot
+```{r}
+set.seed(2022)
+sampling_coverage %>%
+  arrange(n_seq) %>%
+  ggplot(aes(x = 1:nrow(.), y= n_seq)) +
+  geom_line() +
+  scale_x_continuous(n.breaks = nrow(sampling_coverage)) +
+  labs(x = "Data Point", y = " Number Sequences") +
+  theme_bw()
+```
+
+### Point plot
+```{r}
+set.seed(2022)
+sampling_coverage %>%
+  arrange(n_seq) %>%
+  ggplot(aes(x = 1:nrow(.), y= n_seq)) +
+  geom_jitter() +
+  scale_x_continuous(n.breaks = nrow(sampling_coverage)) +
+  labs(x = "Data Point", y = " Number Sequences") +
+  theme_bw()
+```
+
+### Singletons and coverage statistics
+```{r}
+set.seed(2022)
+coverage_stats <- shared %>%
+  group_by(sample_id) %>%
+  summarise(n_seqs = sum(count),
+            n_sings =sum(count == 1),
+            coverage = 100*(1 - n_sings/n_seqs)) %>%
+  filter(n_seqs > 0) %>%
+  as.data.frame() %>%
+  write_tsv("RDataRDS/sample_coverage.tsv")
+
+as.data.frame(read_tsv("RDataRDS/sample_coverage.tsv", show_col_types = F)) %>% 
+  kableExtra::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
+```
+
+
+<!-- # Hypothesis Testing for Alpha Diversity -->
+<!-- - Assess the variation in alpha-diversity between groups. -->
+<!-- - Then accept or reject the null hypothesis that there is no difference in location between groups. -->
+<!-- - Box plots can show the location of the median. -->
+<!-- - Perform samples Wilcoxon test. -->
+
+<!-- ## Data distribution -->
+<!-- ```{r} -->
+<!-- count_tbl %>% -->
+<!--   gather(key = metric, value = value, c("Observed", "Shannon", "PhyloDiv")) %>% -->
+<!--   mutate(metric = factor(metric, levels = c("Observed", "Shannon", "PhyloDiv"))) %>% -->
+<!--   ggplot(aes(x = Group, y = value)) + -->
+<!--   geom_boxplot(outlier.color = NA) + -->
+<!--   geom_jitter(aes(color = Group), height = 0, width = .2) + -->
+<!--   labs(x = "", y = "") + -->
+<!--   facet_wrap(~ metric, scales = "free") + -->
+<!--   theme(legend.position="none") -->
+
+<!-- ``` -->
+
+<!-- ## Summarize -->
+<!-- ```{r} -->
+<!-- count_tbl %>% -->
+<!--   group_by(Group) %>% -->
+<!--     dplyr::summarize( -->
+<!--       median_observed = median(Observed), -->
+<!--       median_invsimpson = median(InvSimpson), -->
+<!--       median_shannon = median(Shannon), -->
+<!--       median_pd = median(PhyloDiv)) -->
+
+<!-- ``` -->
+
+<!-- ## Paired Wilcoxon test -->
+
+<!-- ### Observed vs Group -->
+<!-- ```{r} -->
+<!-- wilcox.test(Observed ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
+
+<!-- ``` -->
+
+<!-- ### Shannon vs Group -->
+<!-- ```{r} -->
+<!-- wilcox.test(Shannon ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
+
+<!-- ``` -->
+
+<!-- ### InvSimpson vs Group -->
+<!-- ```{r} -->
+<!-- wilcox.test(InvSimpson ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
+
+<!-- ``` -->
+
+<!-- ### Phylo Diversity vs Group -->
+<!-- ```{r} -->
+<!-- wilcox.test(PhyloDiv ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
+
+<!-- ``` -->
+
+
+<!-- ### Coverage line plot -->
+<!-- ```{r} -->
+<!-- set.seed(2022) -->
+<!-- sampling_coverage %>%  -->
+<!--   arrange(n_seq) %>%  -->
+<!--   ggplot(aes(x = 1:nrow(.), y= n_seq)) + -->
+<!--   geom_line() + -->
+<!--   coord_cartesian(xlim = c(0, nrow(sampling_coverage))) -->
+<!-- ``` -->
+
+<!-- ### Coverage log-scaled jitter -->
+<!-- ```{r} -->
+<!-- set.seed(2022) -->
+<!-- sampling_coverage %>%  -->
+<!--   arrange(n_seq) %>%  -->
+<!--   ggplot(aes(x = 1:nrow(.), y= n_seq)) + -->
+<!--   geom_jitter() + -->
+<!--   scale_y_log10() -->
+<!-- ``` -->
+
+<!-- ### Coverage statistics -->
+<!-- ```{r} -->
+<!-- set.seed(2022) -->
+<!-- coverage_stats <- shared %>%  -->
+<!--   group_by(sample_id) %>%  -->
+<!--   summarise(n_seqs = sum(count), -->
+<!--             n_sings =sum(count == 1), -->
+<!--             coverage = 100*(1 - n_sings/n_seqs)) %>%  -->
+<!--   filter(n_seqs > 0) %>%  -->
+<!--   as.data.frame() %>%  -->
+<!--   write_tsv("RDataRDS/sample_coverage.tsv") -->
+
+<!-- as.data.frame(read_tsv("RDataRDS/sample_coverage.tsv", show_col_types = F)) -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- set.seed(2022) -->
+<!-- coverage_stats %>%  -->
+<!--   arrange(-coverage) %>%  -->
+<!--   ggplot(aes(x = n_seqs, y = coverage)) + -->
+<!--                geom_point() -->
+<!-- ``` -->
