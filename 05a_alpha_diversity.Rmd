@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = F)
 path_shared <- "~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared"
 ```
 
-## Count and basic diversity metrics {#count_n_metrics}
+## Basic diversity metrics {#count_n_metrics}
 ```{r}
 set.seed(2022)
 
@@ -55,6 +55,9 @@ div_metrics %>%
   kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
 ```
 
+
+## Diversity plots
+
 ### Using original count
 ```{r message=FALSE, warning=FALSE}
 readRDS("RDataRDS/div_metrics.rds") %>%
@@ -93,6 +96,7 @@ rand %>%
 
 
 ### Using phyloseq object
+> Note: Additional metrics are computed automatically when using phyloseq object
 ```{r fig.dim=c(8, 10)}
 library(phyloseq)
 library(tidyverse)
