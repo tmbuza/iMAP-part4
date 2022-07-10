@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = F)
 path_shared <- "~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared"
 ```
 
-## Sequence Count {#seq-count}
+## Count and basic diversity metrics {#count_n_metrics}
 ```{r}
 set.seed(2022)
 
@@ -25,29 +25,17 @@ select(sample_id = Group, starts_with("Phylo")) %>%
   ungroup() %>%
   select(-total)
 
-shared %>% 
+count <- shared %>% 
   group_by(sample_id) %>% 
-  summarise(count = sum(count), .groups = "drop") %>% 
-  kableExtra::kable(format = "html") %>% 
-  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
-```
+  summarise(count = sum(count), .groups = "drop")
 
-```{r include=FALSE}
 ## Random sampling
 rand <- shared %>%
   uncount(count) %>%
   mutate(otu = sample(otu)) %>%
   count(sample_id, otu, name = "count")
 
-rand %>% 
-  group_by(sample_id) %>% 
-  summarise(count = sum(count), .groups = "drop") %>% 
-  kableExtra::kable(format = "html") %>% 
-  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
-```
-
-## Diversity plots
-```{r}
+## Diversity metrics
 source("R/alpha.R")
 set.seed(2022)
 
@@ -56,11 +44,15 @@ div_metrics <- shared %>%
   summarise(sobs = richness(count),
             shannon = shannon(count),
             simpson = simpson(count),
-            invsimpson = 1/simpson,
-            n = sum(count))
+            invsimpson = 1/simpson) %>% 
+  inner_join(count, ., by = "sample_id")
 
 div_metrics %>% 
   saveRDS("RDataRDS/div_metrics.rds")
+
+div_metrics %>% 
+  kableExtra::kable() %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
 ```
 
 ### Using original count
@@ -68,7 +60,7 @@ div_metrics %>%
 readRDS("RDataRDS/div_metrics.rds") %>%
   pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
                names_to="metric") %>%
-  ggplot(aes(x=n, y=value)) +
+  ggplot(aes(x=count, y=value)) +
   geom_point() +
   geom_smooth() +
   facet_wrap(~metric, nrow=4, scales="free_y") + 
@@ -101,8 +93,9 @@ rand %>%
 
 
 ### Using phyloseq object
-```{r fig.dim=c(8, 8)}
+```{r fig.dim=c(8, 10)}
 library(phyloseq)
+library(tidyverse)
 load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = F)
 ps <- ps_raw
 
@@ -112,11 +105,7 @@ alpha_div_tbl <- data.frame(
   "sample_id" = sample_names(ps),
   "group" = phyloseq::sample_data(ps)$isolate,
   "n_read" = phyloseq::sample_sums(ps),
-  "sobs" = phyloseq::estimate_richness(ps, measures = "Observed"),
-  "chao1" = phyloseq::estimate_richness(ps, measures = "Chao1"),
-  "simpson" = phyloseq::estimate_richness(ps, measures = "Simpson"),
-  "invsimpson" = phyloseq::estimate_richness(ps, measures = "InvSimpson"),
-  "shannon" = phyloseq::estimate_richness(ps, measures = "Shannon"),
+  phyloseq::estimate_richness(ps),
   "phylodiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(ps)))), 
                            tree = phyloseq::phy_tree(ps))[, 1])
 
@@ -124,22 +113,26 @@ saveRDS(alpha_div_tbl, file = "RDataRDS/ps_alpha_div_tbl.rds")
 
 readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
   rename(sobs = Observed, 
-         chao = chao1.Chao1, 
+         chao = Chao1, 
+         ace = ACE,
          simpson = Simpson, 
          invsimpson = InvSimpson, 
-         shannon = Shannon) %>% 
-  select(-group, -chao1.se.chao1) %>%
+         shannon = Shannon,
+         fisher = Fisher) %>% 
   pivot_longer(cols=c(sobs, 
                       chao, 
+                      ace,
                       simpson, 
                       invsimpson, 
-                      shannon, 
+                      shannon,
+                      fisher,
                       phylodiv),
-               names_to="metric", values_to = "value") %>% 
+               names_to="metric", 
+               values_to = "value") %>% 
   ggplot(aes(x = n_read, y=value)) +
   geom_point() +
   geom_smooth() +
-  facet_wrap(~metric, nrow=6, scales="free_y") + 
+  facet_wrap(~metric, nrow=8, scales="free_y") + 
   theme_bw() +
   theme(panel.grid = element_blank())
 ```
