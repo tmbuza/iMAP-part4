@@ -1,19 +1,18 @@
-# (PART) MICROBIAL DIVERSITY {-}
+# (PART) ALPHA DIVERSITY {-}
 # Alpha Diversity Analysis {#alpha-diversity}
 
 ```{r include=FALSE}
 library(vegan)
 library(tidyverse)
 library(phyloseq)
-knitr::opts_chunk$set(echo = F)
 path_shared <- "~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared"
 ```
 
 ## Basic diversity metrics {#count_n_metrics}
 ```{r}
 set.seed(2022)
-
-shared <- read_tsv(path_shared, show_col_types = F) %>%
+shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
+                   show_col_types = F) %>%
 select(sample_id = Group, starts_with("Phylo")) %>% 
   pivot_longer(-sample_id, names_to = "otu", values_to = "count") %>%
   group_by(sample_id) %>%
@@ -97,6 +96,7 @@ rand %>%
 
 ### Using phyloseq object
 > Note: Additional metrics are computed automatically when using phyloseq object
+
 ```{r fig.dim=c(8, 10)}
 library(phyloseq)
 library(tidyverse)
@@ -140,6 +140,7 @@ readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
   theme_bw() +
   theme(panel.grid = element_blank())
 ```
+
 
 ## Sampling coverage 
 ```{r}
@@ -198,106 +199,19 @@ as.data.frame(read_tsv("RDataRDS/sample_coverage.tsv", show_col_types = F)) %>%
   kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
 ```
 
+## Hypothesis Testing
+- Assess the variation in alpha-diversity between groups.
+- Then accept or reject the null hypothesis that there is no difference in location between groups.
+- Box plots can show the location of the median.
+- Perform samples Wilcoxon test.
 
-<!-- # Hypothesis Testing for Alpha Diversity -->
-<!-- - Assess the variation in alpha-diversity between groups. -->
-<!-- - Then accept or reject the null hypothesis that there is no difference in location between groups. -->
-<!-- - Box plots can show the location of the median. -->
-<!-- - Perform samples Wilcoxon test. -->
+## Summarize
+```{r}
+div_metrics %>%
+  group_by(sample_id) %>%
+    dplyr::summarize(
+      median_observed = median(sobs),
+      median_invsimpson = median(invsimpson),
+      median_shannon = median(shannon))
+```
 
-<!-- ## Data distribution -->
-<!-- ```{r} -->
-<!-- count_tbl %>% -->
-<!--   gather(key = metric, value = value, c("Observed", "Shannon", "PhyloDiv")) %>% -->
-<!--   mutate(metric = factor(metric, levels = c("Observed", "Shannon", "PhyloDiv"))) %>% -->
-<!--   ggplot(aes(x = Group, y = value)) + -->
-<!--   geom_boxplot(outlier.color = NA) + -->
-<!--   geom_jitter(aes(color = Group), height = 0, width = .2) + -->
-<!--   labs(x = "", y = "") + -->
-<!--   facet_wrap(~ metric, scales = "free") + -->
-<!--   theme(legend.position="none") -->
-
-<!-- ``` -->
-
-<!-- ## Summarize -->
-<!-- ```{r} -->
-<!-- count_tbl %>% -->
-<!--   group_by(Group) %>% -->
-<!--     dplyr::summarize( -->
-<!--       median_observed = median(Observed), -->
-<!--       median_invsimpson = median(InvSimpson), -->
-<!--       median_shannon = median(Shannon), -->
-<!--       median_pd = median(PhyloDiv)) -->
-
-<!-- ``` -->
-
-<!-- ## Paired Wilcoxon test -->
-
-<!-- ### Observed vs Group -->
-<!-- ```{r} -->
-<!-- wilcox.test(Observed ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
-
-<!-- ``` -->
-
-<!-- ### Shannon vs Group -->
-<!-- ```{r} -->
-<!-- wilcox.test(Shannon ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
-
-<!-- ``` -->
-
-<!-- ### InvSimpson vs Group -->
-<!-- ```{r} -->
-<!-- wilcox.test(InvSimpson ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
-
-<!-- ``` -->
-
-<!-- ### Phylo Diversity vs Group -->
-<!-- ```{r} -->
-<!-- wilcox.test(PhyloDiv ~ Group, data = count_tbl, exact = FALSE, conf.int = TRUE) -->
-
-<!-- ``` -->
-
-
-<!-- ### Coverage line plot -->
-<!-- ```{r} -->
-<!-- set.seed(2022) -->
-<!-- sampling_coverage %>%  -->
-<!--   arrange(n_seq) %>%  -->
-<!--   ggplot(aes(x = 1:nrow(.), y= n_seq)) + -->
-<!--   geom_line() + -->
-<!--   coord_cartesian(xlim = c(0, nrow(sampling_coverage))) -->
-<!-- ``` -->
-
-<!-- ### Coverage log-scaled jitter -->
-<!-- ```{r} -->
-<!-- set.seed(2022) -->
-<!-- sampling_coverage %>%  -->
-<!--   arrange(n_seq) %>%  -->
-<!--   ggplot(aes(x = 1:nrow(.), y= n_seq)) + -->
-<!--   geom_jitter() + -->
-<!--   scale_y_log10() -->
-<!-- ``` -->
-
-<!-- ### Coverage statistics -->
-<!-- ```{r} -->
-<!-- set.seed(2022) -->
-<!-- coverage_stats <- shared %>%  -->
-<!--   group_by(sample_id) %>%  -->
-<!--   summarise(n_seqs = sum(count), -->
-<!--             n_sings =sum(count == 1), -->
-<!--             coverage = 100*(1 - n_sings/n_seqs)) %>%  -->
-<!--   filter(n_seqs > 0) %>%  -->
-<!--   as.data.frame() %>%  -->
-<!--   write_tsv("RDataRDS/sample_coverage.tsv") -->
-
-<!-- as.data.frame(read_tsv("RDataRDS/sample_coverage.tsv", show_col_types = F)) -->
-<!-- ``` -->
-
-
-<!-- ```{r} -->
-<!-- set.seed(2022) -->
-<!-- coverage_stats %>%  -->
-<!--   arrange(-coverage) %>%  -->
-<!--   ggplot(aes(x = n_seqs, y = coverage)) + -->
-<!--                geom_point() -->
-<!-- ``` -->
