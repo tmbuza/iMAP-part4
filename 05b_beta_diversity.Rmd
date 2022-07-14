@@ -1,285 +1,253 @@
-# Beta Diversity Analysis {#beta-diversity}
+# (PART) BETA DIVERSITY {-}
 
-## Distance matrices
+# Beta Diversity Dataset {#beta-diversity}
+
+## Data preparation {#prep-beta-data}
+
+### Raw count table
 ```{r}
-seed=TRUE
-
-library(tidyverse)
 library(vegan)
-library(SRS)
+library(zCompositions)
+library(tidyverse)
 
 shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
                    show_col_types = F) %>%
-dplyr:: select(Group, starts_with("Phylo")) %>% 
-  pivot_longer(-Group) %>%
-  group_by(Group) %>%
+  dplyr::select(sample_id = Group, starts_with("Phylo")) %>% 
+  pivot_longer(-sample_id) %>%
+  group_by(sample_id) %>%
   mutate(total = sum(value)) %>%
   filter(total > 1800) %>%
   group_by(name) %>%
   mutate(total = sum(value)) %>%
   filter(total != 0) %>%
   ungroup() %>%
-dplyr:: select(-total)
+dplyr::select(-total)
 
+shared
+```
 
+### Random count table
+```{r}
 rand <- shared %>%
   uncount(value) %>%
   mutate(rand_name = sample(name)) %>%
-dplyr:: select(-name) %>%
-  count(Group, rand_name)
+dplyr::select(-name) %>%
+  count(sample_id, rand_name)
+
+rand
+```
+
+### Group count summary in ascending
+> The table is arranged in ascending order. We need to know the minimum number of sequences for better decisions in sampling depth for statistical analyses.
+
+```{r}
+group_count <- rand %>%
+  group_by(sample_id) %>%
+  summarize(n_seqs = sum(n)) %>% 
+  arrange(n_seqs)
+
+group_count
+```
 
 
-shared_group_count <- shared %>%
-  group_by(Group) %>%
-  summarize(n = sum(value))
+### Count range
+```{r}
+group_count$n_seqs %>% range
+```
 
-rand_group_count <- rand %>%
-  group_by(Group) %>%
-  summarize(n = sum(n))
+### Count table matrix
+```{r}
+rand_matrix <- rand %>%
+  pivot_wider(names_from=rand_name, values_from=n, values_fill = 0) %>%
+  tibble::column_to_rownames("sample_id")
 
-inner_join(shared_group_count, rand_group_count,  by="Group")
+rand_matrix[1:5, 1:5]
+```
 
-smallest_group <- min(rand_group_count$n)
+## Computing distance matrices
 
-shared_otu_count <- shared %>%
-  group_by(name) %>%
-  summarize(n = sum(value))
+### All-inclusive distance matrix
+```{r}
+norarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean")
+norarefy_bray_dist <- vegdist(rand_matrix, method="bray")
+```
 
-rand_otu_count <- rand %>%
-  group_by(rand_name) %>%
-  summarize(n = sum(n))
+### Rarefied distance matrix
+> A rarefied sample is computed from the minimum group depth.
 
-inner_join(shared_otu_count, rand_otu_count,  by=c("name" = "rand_name" ))
+```{r}
+rarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean", sample = min(group_count$n_seqs))
+rarefy_bray_dist <- vegdist(rand_matrix, method="bray", sample = min(group_count$n_seqs))
+```
 
+### Rarefied clr distance matrix {#center-log-ratio-matrix}
+```{r}
+gm <- function(x){
+  exp(mean(log(x[x>0])))}
 
-rand_group_count %>%
-  ggplot(aes(x=n)) + geom_histogram()
-
-range(rand_group_count$n)
-
-rand_df <- rand %>%
-  pivot_wider(names_from="rand_name", values_from="n", values_fill = 0) %>%
-  as.data.frame()
-
-rownames(rand_df) <- rand_df$Group
-rand_df <- rand_df[, -1]
-
-rand_matrix <- as.matrix(rand_df)
-
-norare_dist_matrix <- vegdist(rand_matrix, method="bray")
-rare_dist_matrix <- avgdist(rand_matrix, dmethod="bray", sample=smallest_group)
-
-norare_dist_tibble <- norare_dist_matrix %>%
-  as.matrix() %>%
-  as_tibble(rownames="sample") %>%
-  pivot_longer(-sample) %>%
-  filter(name < sample)
-
-rare_dist_tibble <- rare_dist_matrix %>%
-  as.matrix() %>%
-  as_tibble(rownames="sample") %>%
-  pivot_longer(-sample) %>%
-  filter(name < sample)
-
-relabund <- rand %>%
-  group_by(Group) %>%
-  mutate(rel_abund = n/sum(n)) %>%
+rclr_matrix <- rand %>%
+  group_by(sample_id) %>%
+  mutate(rclr = log(n/gm(n))) %>%
   ungroup() %>%
-dplyr:: select(Group, rand_name, rel_abund) %>%
-  pivot_wider(names_from="rand_name", values_from="rel_abund",values_fill=0) %>%
-  as.data.frame()
+  dplyr::select(-n) %>%
+  pivot_wider(names_from=rand_name, values_from=rclr, values_fill=0) %>%
+  tibble::column_to_rownames("sample_id")
 
-rownames(relabund) <- relabund$Group
-relabund <- relabund[, -1]
-relabund_matrix <- as.matrix(relabund)
-
-relabund_dist_matrix <- vegdist(relabund_matrix, method="bray")
-
-relabund_dist_tibble <- relabund_dist_matrix %>%
-  as.matrix() %>%
-  as_tibble(rownames="sample") %>%
-  pivot_longer(-sample) %>%
-  filter(name < sample)
-
-rel_scaled <- relabund %>%
-  as_tibble(rownames="Group") %>%
-  pivot_longer(-Group) %>%
-  mutate(scaled = round(value * smallest_group, 0)) %>%
-  group_by(Group) %>%
-  summarize(n_scaled = sum(scaled))
-
-normalized <- rand_df %>%
-  t() %>%
-  as.data.frame() %>%
-  SRS(Cmin=smallest_group) %>%
-  t()
-
-normalized_dist_matrix <- vegdist(normalized, method="bray")
-
-normalized_dist_tibble <- normalized_dist_matrix %>%
-  as.matrix() %>%
-  as_tibble(rownames="sample") %>%
-  pivot_longer(-sample) %>%
-  filter(name < sample)
+rclr_eucl_dist <- vegdist(rclr_matrix, method="euclidean")
+```
 
 
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(-sample_id) %>%
+  group_by(sample_id) %>%
+  mutate(zclr = log(value/gm(value))) %>%
+  ungroup() %>%
+dplyr::select(-value) %>%
+  pivot_wider(names_from=name, values_from=zclr, values_fill=0) %>%
+  column_to_rownames("sample_id")
 
-comparison <- inner_join(norare_dist_tibble, rare_dist_tibble,
-                         by=c("sample", "name")) %>%
-  inner_join(., relabund_dist_tibble, by=c("sample", "name")) %>%
-  inner_join(., normalized_dist_tibble, by=c("sample", "name")) %>%
-dplyr:: select(sample, name, norare=value.x, rare=value.y, relabund=value.x.x,
-         normalized=value.y.y) %>%
-  inner_join(., rand_group_count, by=c("sample" = "Group")) %>%
-  inner_join(., rand_group_count, by=c("name" = "Group")) %>%
-  mutate(n_diff = abs(n.x-n.y)) %>%
-dplyr:: select(-n.x, -n.y)
+zclr_eucl_dist  <- vegdist(zclr_matrix, method="euclidean")
+```
 
-comparison %>%
-  ggplot(aes(x=norare, y=rare, color=n_diff)) +
-  geom_point(size=0.25, alpha=0.25) +
+## Creating distance longer dataframes
+```{r}
+norare_dtbl <- norarefy_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols= -sample_id) %>%
+  filter(name < sample_id)
+
+rare_dtbl <- rarefy_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols= -sample_id) %>%
+  filter(name < sample_id)
+
+rclr_dtbl <- rclr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id)
+
+zclr_dtbl <- zclr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id)
+```
+
+## Compare distances by point plot
+```{r}
+inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., rclr_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., zclr_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., group_count, by=c("sample_id" = "sample_id")) %>%
+  inner_join(., group_count, by=c("name" = "sample_id")) %>%
+  mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
+  dplyr::select(sample_id, name, norare=value.x, rare=value.y, rclr=value.x.x, zclr=value.y.y, diffs) %>%
+  pivot_longer(cols=c(norare, rare, rclr, zclr), names_to="method", values_to="dist") %>%
+  ggplot(aes(x=diffs, y=dist)) +
+  geom_point() +
+  facet_wrap(~method, nrow=4, scales="free_y") +
   geom_smooth()
+```
 
-comparison %>%
-  pivot_longer(cols=c("norare", "rare", "relabund", "normalized"),
-               names_to="type", values_to="dist") %>%
-  mutate(diff_cat = cut_width(n_diff, width=500, boundary=0),
-         diff_cat = str_replace(diff_cat, "[\\[\\(](.*),.*", "\\1"),
-         diff_cat = as.numeric(diff_cat)) %>%
-  filter(type != "norare") %>%
-  group_by(diff_cat, type) %>%
-  summarize(mean=mean(dist), sd=sd(dist), n=n(), .groups="drop") %>%
-  filter(n > 0) %>%
-  pivot_longer(cols=c("mean", "sd", "n")) %>%
-  mutate(name = factor(name, levels=c("n", "mean", "sd"))) %>%
-  ggplot(aes(x=diff_cat,  y=value, group=type, color=type)) +
-  geom_line() +
-  facet_wrap(~name, nrow=3, scales="free_y") +
-  coord_cartesian(ylim=c(0, NA)) +
-  theme_classic()
+### Arc sine (asin) transformation
+```{r}
+x <- norarefy_bray_dist
+y <- x/max(x)
+df_asin <- round(asin(y), 6)
+df_asin <- as.matrix(df_asin)
+saveRDS(df_asin, "RDataRDS/df_asin.rds")
 
-comparison %>%
-  pivot_longer(cols=c("norare", "rare", "relabund", "normalized"),
-               names_to="type", values_to="dist") %>%
-  ggplot(aes(x=dist, fill=type)) +
-  geom_density(alpha=0.5, color=NA) +
-  coord_cartesian(ylim=c(0, 50), xlim=c(0,0.25)) +
-  theme_classic()
-  
-
-
-rand_df <- rand %>%
-  pivot_wider(names_from="rand_name", values_from="n", values_fill=0) %>%
-  as.data.frame()
-
-rownames(rand_df) <- rand_df[,1]
-rand_df <- rand_df[, -1]
-
-
-run_rarefy_bray <- function(x){
-  
-  mean_sd <- avgdist(rand_df, dmethod="bray", sample=x) %>%
-    as.matrix() %>%
-    as_tibble(rownames="samples") %>%
-    pivot_longer(cols=-samples) %>%
-    summarize(mean=mean(value), sd=sd(value))
-  
-  n <- rand_group_count %>% filter(n>=x) %>% nrow()
-  
-  bind_cols(n_seqs=x, mean_sd, n=n)
-}
-
-library(furrr)
-plan(multisession)
-rarefy_bray_results <- future_map_dfr(seq(1000, 15000, by=1000),
-                                      run_rarefy_bray, .progress=TRUE)
-
-rarefy_bray_results %>%
-  pivot_longer(cols=c("mean", "sd", "n")) %>%
-  mutate(name = factor(name, levels=c("n", "mean", "sd"))) %>%
-  ggplot(aes(x=n_seqs, y=value)) +
-  geom_line() +
-  coord_cartesian(ylim=c(0, NA)) +
-  facet_wrap(~name, nrow=3, scales="free_y")
-
-
-run_rarefy_bray2 <- function(x){
-  
-  mean_sd <- avgdist(rand_df, dmethod="bray", sample=x) %>%
-    as.matrix() %>%
-    as_tibble(rownames="samples") %>%
-    pivot_longer(cols=-samples) %>%
-    filter(name < samples) %>%
-    summarize(mean=mean(value), sd=sd(value))
-  
-  n <- rand_group_count %>% filter(n>=x) %>% nrow()
-  
-  bind_cols(n_seqs=x, mean_sd, n=n)
-}
-
-rarefy_bray_results2 <- future_map_dfr(seq(1000, 15000, by=1000),
-                                      run_rarefy_bray2, .progress=TRUE)
-
-rarefy_bray_results2 %>%
-  pivot_longer(cols=c("mean", "sd", "n")) %>%
-  mutate(name = factor(name, levels=c("n", "mean", "sd"))) %>%
-  ggplot(aes(x=n_seqs, y=value)) +
-  geom_line() +
-  coord_cartesian(ylim=c(0, NA)) +
-  facet_wrap(~name, nrow=3, scales="free_y")
+df_asin[1:5, 1:4]
 
 ```
 
+
+# Hierarchical Clustering
+
+```{r}
+library(dendextend)
+plot(as.dendrogram(hclust(d = norarefy_bray_dist, method = "average")))
+```
 
 
 # Ordination
 
-## PCoA: Principal Coordinate Analysis
-```{r}
-library(tidyverse)
-library(glue)
-source("R/read_matrix.R")
-
-dist_matrix <- read_matrix("../iMAP-part2/data/phylotype_analysis/final.tx.1.subsample.braycurtis.1.lt.dist")
-
-dist_tbl <- as_tibble(dist_matrix, rownames="samples")
-
-sample_lookup <- dist_tbl %>% 
-dplyr:: select(samples)
+## Principal Coordinate Analysis (PCoA)
+- PCoA is Classical Metric Multidimensional Scaling (MDS)
+- All variables are scaled to unit variance before the analysis
+- PCoA enables us to plot two axes against each other.
+- Axis 1 explains the most variation in the data, axis 2 explains the second most variation, and so forth.
 
 
-dist_matrix <- dist_tbl %>%
-  pivot_longer(cols=-samples, names_to="b", values_to="distances") %>%
-  inner_join(., sample_lookup, by="samples") %>%
-  inner_join(., sample_lookup, by=c("b" = "samples")) %>%
-dplyr:: select(samples, b, distances) %>%
-  pivot_wider(names_from="b", values_from="distances") %>%
-dplyr:: select(-samples) %>%
-  as.dist()
+### Using mothur-pcoa.axes
+- Import PCoA data and metadata.
+- Join metadata and the PCoA data.
+- Plot the first two axes.
 
-pcoa <- cmdscale(dist_matrix, eig=TRUE, add=TRUE)
+```{r message=FALSE, warning=FALSE}
+source("R/common.R")
+library(tidyverse, suppressPackageStartupMessages())
 
-positions <- pcoa$points
-colnames(positions) <- c("pcoa1", "pcoa2")
+pcoa <- read_tsv(file="../smda-end2end/data/mothurdata/final.tx.1.subsample.braycurtis.1.lt.pcoa.axes", show_col_types = F)
+metadata <- read_tsv("../smda-end2end/RDataRDS/mo_metadata.tsv", show_col_types = F) %>%
+  filter(isolate == "Buffalo" | isolate == "Wildebeest") %>%
+  rename(var1 = isolate)
 
-percent_explained <- 100 * pcoa$eig / sum(pcoa$eig)
+metadata_pcoa <- inner_join(metadata, pcoa, by=c('sample_id'='group'))
 
-pretty_pe <- format(round(percent_explained, digits =1), nsmall=1, trim=TRUE)
-
-labels <- c(glue("PCo Axis 1 ({pretty_pe[1]}%)"),
-            glue("PCo Axis 2 ({pretty_pe[2]}%)"))
-
-positions %>%
-  as_tibble(rownames = "samples") %>%
-  ggplot(aes(x=pcoa1, y=pcoa2)) +
-  geom_point() +
-  labs(x=labels[1], y=labels[2])
-
-# tibble(pe = cumsum(percent_explained),
-#        axis = 1:length(percent_explained)) %>%
-#   ggplot(aes(x=axis, y=pe)) +
-#   geom_line() +
-#   coord_cartesian(xlim = c(1, 10), ylim=c(0, 50)) +
-#   scale_x_continuous(breaks=1:10)
+ggplot(metadata_pcoa, aes(x=axis1, y=axis2, color=var1)) +
+	geom_point(shape=19, size=2) +
+	coord_fixed() +
+	labs(title="PCoA of Bray-Curtis Distances",
+		x="PCoA Axis 1",
+		y="PCoA Axis 2",
+		color = "Variable") +
+	theme_test()
 ```
+
+
+### Using distance matrix directly
+- We use the *cmdscale()* function in stats package to compute the axes.
+```{r}
+set.seed(2022)
+pcoa <- cmdscale(norarefy_bray_dist, k = (nrow(metadata) - 1), eig = TRUE)
+pcoa_variance <- data.frame(PCO = paste("PCO",  seq(1:nrow(as.matrix(norarefy_bray_dist))), sep = ""), 
+                           ExplainedVar = round(pcoa$eig^2/sum(pcoa$eig^2), 4))
+
+pcoa_variance %>%
+  mutate(PCO = factor(pcoa_variance$PCO, levels = gtools::mixedsort(pcoa_variance$PCO))) %>% 
+  ggplot(aes(x = PCO, y = ExplainedVar)) +
+  geom_col(fill = "#4682b4") +
+  xlab("Principal Coordinate") +
+  ylab("Variance Explained") +
+  ggtitle("PCoA Scree Plot") +
+  ylim(0, 1) +
+  theme(axis.text = element_text(size = 10))
+
+pcoa_1_2_meta <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% 
+  dfRowName("sample_id") %>% 
+  inner_join(metadata, pcoa_1_2_meta, by = "sample_id")
+
+perc_expned <- format(round((100 * pcoa$eig / sum(pcoa$eig)), digits =1), nsmall=1, trim=TRUE)
+
+library(glue)
+labels <- c(glue("PCo Axis 1 ({perc_expned[1]}%)"),
+            glue("PCo Axis 2 ({perc_expned[2]}%)"))
+
+pcoa_1_2_meta %>% 
+ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(x=labels[1], y=labels[2], color = "Variable", 
+             title = "Principal Component by Variable") +
+  theme(legend.position = "right")
+```
+
+
+## NMDS Ordination
 
