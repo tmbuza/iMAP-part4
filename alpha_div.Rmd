@@ -1,0 +1,750 @@
+---
+title: "Exploratory Analysis of Microbiome Data in R"
+subtitle: "End-to-End Practical User Guides for Microbiome Data Analysis"
+author: "Teresia Mrema-Buza, A Microbiome Data Science Enthusiast and Owner of the Complex Data Insights, LLC, USA"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+knit: bookdown::render_book
+output:
+  bookdown::bs4_book:
+    includes:
+      in_header:
+    template: bs4_part4_template.html
+documentclass: book
+classoption: openany #remove empty pages in pdf doc
+colorlinks: true
+css:
+- style.css
+- css/style.css
+always_allow_html: true
+fig_caption: true
+fontsize: 12pt
+geometry: margin=1in
+indent: false
+keep_tex: true
+link-citations: true
+mainfont: Times New Roman
+biblio-style: apalike
+description: |
+  This is a practical user's guide for **Systematic Microbiome Data Analysis in R**. The guide provides integrated and highly curated solutions for achieving better results.
+---
+
+
+```{r pkgbiblib, include=FALSE}
+knitr::write_bib(c(
+  .packages(), 'base','bookdown','rmarkdown','tidyverse','shiny','vegan','data.table, dendextend, robCompositions, microbiome, ALDEx2, caret, rms, phyloseq'
+), 'library/packages.bib')
+```
+
+```{r setup, echo=FALSE}
+source(file = "R/common.R")
+```
+
+# Exploratory Analysis of Microbiome Data {-#frontpage}
+
+```{r include=FALSE}
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
+
+# 1. Make a graph
+graph <- DiagrammeR::grViz("
+digraph {
+graph [layout = dot, rankdir = TD]
+
+node [
+shape = box, 
+style = filled, 
+fillcolor = white, 
+fontname = Helvetica,
+penwidth = 2.0] 
+
+edge [arrowhead = diamond]
+
+A [label = 'EXPLORATORY \nANALYSIS OF \nMICROBIOME DATA', fillcolor = white, penwidth = 5.0]
+B [label = 'Preprocesed\nTidy Objects']
+C [label = 'Data Visualization']
+D [label = 'Data Distribution']
+E [label = 'Barcharts']
+F [label = 'Boxplots']
+G [label = 'Heatmaps']
+H [label = 'Correlation']
+
+
+{A}  -> B [label = '  Input Data']
+{B}  -> C
+{C}  -> D
+{D}  -> E
+{D}  -> F
+{C}  -> H
+{H}  -> G
+
+
+}", height = 500, width = 500)
+
+# 2. Convert to SVG, then save as png
+part4_flow = DiagrammeRsvg::export_svg(graph)
+part4_flow = charToRaw(part4_flow) # flatten
+rsvg::rsvg_png(part4_flow, "img/part4_flow.png")
+```
+
+
+<a href=""><img src="images/abund_bar.gif" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/></a>
+
+## Quick Glimpse {-}
+Investigating the role of microbial communities in health and disease requires a thorough knowledge of the entire analytical process. Using wrong approaches can cost a significant amount of dollars and lengthy process to achieve the desired results. This is <b>PART 4</b> of the practical user guides intended to provide analytical support to the microbiome research community. The entire guide is reproducible, allowing users to easily follow along. If interested, user may use this model to publish their findings in a book format.
+
+## Structure of this guide {-}
+This guide is divided into chapters to facilitate easy navigation. Each chapter contains several sections as displayed in the navigation bars on the left and right. Click the hyper-linked text if you want to jump into a specific chapter or section.
+
+## Code availability {-}
+The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part4/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part4/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
+
+<!--chapter:end:index.Rmd-->
+
+# (PART) ALPHA DIVERSITY {-}
+# Alpha Diversity Analysis {#alpha-diversity}
+
+# Alpha Diversity Metrics
+
+## Introduction
+Here we will create functions for calculating alpha diversity metrics and indices. 
+
+- Is there an effect of sampling effort on the observed richness, Shannon diversity, Simpson diversity and others?. 
+- Here we synthesize and visualize the data using tools from vegan, dplyr, ggplot2 and other tidyverse packages
+
+## Load libraries and processed data
+```{r}
+library(tidyverse)
+library(vegan)
+
+set.seed(2022)
+
+shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
+                   show_col_types = F) %>%
+select(sample_id = Group, starts_with("Phylo")) %>% 
+  pivot_longer(-sample_id, names_to = "otu", values_to = "count") %>%
+  group_by(sample_id) %>%
+  mutate(total = sum(count)) %>%
+  filter(total > 0) %>%
+  group_by(otu) %>%
+  mutate(total = sum(count)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+## Random sampling of pooled data
+rand <- shared %>%
+  uncount(count) %>%
+  mutate(otu = sample(otu)) %>%
+  count(sample_id, otu, name="count")
+```
+
+## Create alpha metrics function
+Functions for calculating:
+
+1. Richness as species diversity
+2. Shannon diversity index
+3. Simpson diversity index
+4. Inverse Simpson diversity index
+
+Input: Count values
+
+```{r}
+richness <- function(x){
+ sum(x>0)
+}
+
+shannon <- function(x){
+  rabund <- x[x>0]/sum(x) 
+  -sum(rabund * log(rabund))
+}
+
+simpson <- function(x){
+  n <- sum(x)
+  sum(x * (x-1) / (n * (n-1)))
+
+}
+
+rarefy <- function(x, sample){
+
+  x <- x[x>0]
+  sum(1-exp(lchoose(sum(x) - x, sample) - lchoose(sum(x), sample)))
+  
+}
+```
+
+
+## Sequences count summary per sample {#seq-count}
+### In ascending order
+```{r}
+count <- shared %>% 
+  group_by(sample_id) %>% 
+  summarise(n_seqs = sum(count)) %>% 
+  arrange(n_seqs)
+```
+
+
+### In descending order
+```{r}
+shared %>% 
+  group_by(sample_id) %>% 
+  summarise(n_seqs = sum(count)) %>% 
+  arrange(-n_seqs)
+```
+
+
+## Basic diversity metrics {#count_n_metrics}
+```{r}
+source("R/alpha.R")
+set.seed(2022)
+
+div_metrics <- shared %>%
+  group_by(sample_id) %>%
+  summarise(sobs = richness(count),
+            shannon = shannon(count),
+            simpson = simpson(count),
+            invsimpson = 1/simpson) %>% 
+  inner_join(count, ., by = "sample_id")
+
+div_metrics %>% 
+  saveRDS("RDataRDS/div_metrics.rds")
+
+div_metrics %>% 
+  kableExtra::kable() %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
+```
+
+
+## Diversity plots
+
+### Using original count
+```{r message=FALSE, warning=FALSE}
+source("R/alpha.R")
+library(vegan)
+set.seed(2022)
+
+shared %>%
+  group_by(sample_id) %>%
+  summarise(sobs = richness(count),
+            shannon = shannon(count),
+            simpson = simpson(count),
+            invsimpson = 1/simpson,
+            n = sum(count)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=4, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+### Using randomly sampled count
+```{r}
+source("R/alpha.R")
+library(vegan)
+set.seed(2022)
+
+rand %>%
+  group_by(sample_id) %>%
+  summarise(sobs = richness(count),
+            shannon = shannon(count),
+            simpson = simpson(count),
+            invsimpson = 1/simpson,
+            n = sum(count)) %>%
+  pivot_longer(cols=c(sobs, shannon, invsimpson, simpson),
+               names_to="metric") %>%
+  ggplot(aes(x=n, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=4, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+
+## Sampling coverage 
+```{r}
+sampling_coverage <- shared %>% 
+  group_by(sample_id) %>% 
+summarise(n_seqs = sum(count)) %>% 
+arrange(n_seqs)
+```
+
+
+### Density plot
+```{r}
+sampling_coverage %>% 
+  ggplot(aes(x = n_seqs)) +
+  geom_density()
+
+```
+
+> The density plot looks good but it does nlt show the count.
+
+
+### Histogram plot
+```{r}
+sampling_coverage %>% 
+  ggplot(aes(x = n_seqs)) +
+  geom_histogram(binwidth = 5000) +
+  coord_cartesian(xlim = c(0, 60000))
+
+```
+
+> Histograms are better, they show the number of sequences and the count. Adjust the number of bins to see wher the break are or where the high dentsity are. This will guide in selecting the sampling size that is more representative.
+
+
+### Boxplot plot
+```{r}
+sampling_coverage %>% 
+  ggplot(aes(x = 1, y = n_seqs)) +
+  geom_boxplot()
+```
+
+> The box plot also shows the median, the central line. Try violin
+
+
+### Jitter plot
+```{r}
+sampling_coverage %>% 
+  ggplot(aes(x = 1, y = n_seqs)) +
+  geom_jitter()
+```
+
+> Note:  In jitter plot the y-axis are the actual number of sequences. The x-axis point are positioned in such a way that they do not overlap too much. Try to scale y-axis for a better view of the points.
+
+
+
+### Jitter plot with log10 on y-axis
+```{r}
+set.seed(2022)
+sampling_coverage %>% 
+  ggplot(aes(x = 1, y = n_seqs)) +
+  geom_jitter() +
+  scale_y_log10()
+```
+> Most point are clearly seen above a specific y-axis, which might be chosen for rarefaction. How about a boxplot?
+
+
+### Violin plot
+```{r}
+sampling_coverage %>% 
+  ggplot(aes(x = 1, y = n_seqs)) +
+  geom_violin()
+```
+
+> Violin gives the shape of distribution, more data where it is wider and vice versa.
+
+
+### Line plot
+```{r}
+set.seed(2022)
+sampling_coverage %>%
+  arrange(n_seqs) %>%
+  ggplot(aes(x = 1:nrow(.), y= n_seqs)) +
+  geom_line() +
+  scale_x_continuous(n.breaks = nrow(sampling_coverage)) +
+  labs(x = "Data Point", y = " Number Sequences") +
+  theme_bw()
+```
+
+### Point plot
+```{r}
+set.seed(2022)
+sampling_coverage %>%
+  arrange(n_seqs) %>%
+  ggplot(aes(x = 1:nrow(.), y= n_seqs)) +
+  geom_point() +
+  scale_x_continuous(n.breaks = nrow(sampling_coverage)) +
+  labs(x = "Data Point", y = " Number Sequences") +
+  theme_bw()
+```
+
+### Singletons and coverage statistics
+```{r}
+set.seed(2022)
+coverage_stats <- shared %>%
+  group_by(sample_id) %>%
+  summarise(n_seqs = sum(count),
+            n_sings =sum(count == 1),
+            coverage = 100*(1 - n_sings/n_seqs), .groups = "drop") %>%
+  filter(n_seqs > 0) %>%
+  as.data.frame() %>%
+  write_tsv("RDataRDS/sample_coverage.tsv")
+
+as.data.frame(read_tsv("RDataRDS/sample_coverage.tsv", show_col_types = F)) %>% 
+  kableExtra::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = F, bootstrap_options = "basic")
+
+set.seed(2022)
+coverage_stats %>%
+  arrange(coverage) %>%
+  ggplot(aes(x = 1:nrow(.), y= coverage)) +
+  geom_point() +
+  coord_cartesian() +
+  scale_x_continuous(n.breaks = nrow(sampling_coverage)) +
+  scale_y_continuous(n.breaks = nrow(sampling_coverage)) +
+  labs(x = "Data Point", y = " Number Sequences") +
+  theme_bw()
+```
+
+> If we sample 1000 sequence we get a minimum coverage of 73. The more the number of sequence the better the coverage. Use the best judgemnet in selecting the threshold.
+
+
+## Calculating Good\'s coverage
+Good\'s coverage is the fraction of sequences that appear in an OTU that has been seen more than one.
+
+![](images/cgoods.png){width=30%}
+
+
+# Diversity Using Phyloseq Objects
+```{r}
+library(phyloseq)
+library(tidyverse, suppressPackageStartupMessages())
+
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = F)
+```
+
+## Raw abundnace
+```{r}
+(ps_raw <- ps_raw)
+otu_table(ps_raw)[1:5, 1:3]
+```
+
+## Relative abundnace
+```{r}
+(ps_rel <- ps_rel)
+otu_table(ps_rel)[1:5, 1:3]
+```
+
+## Diversity metrics
+> Diversity metric functions accept only **integers (counts)** 
+> .
+> Note: Multiple metrics are computed automatically when using phyloseq `estimate_richness` function.
+
+```{r fig.dim=c(8, 10)}
+set.seed(1234)
+
+ps <- ps_raw
+
+alpha_div_tbl <- data.frame(
+  "sample_id" = sample_names(ps),
+  "group" = phyloseq::sample_data(ps)$isolate,
+  "n_read" = phyloseq::sample_sums(ps),
+  phyloseq::estimate_richness(ps),
+  "phylodiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(ps)))), 
+                           tree = phyloseq::phy_tree(ps))[, 1])
+
+saveRDS(alpha_div_tbl, file = "RDataRDS/ps_alpha_div_tbl.rds")
+
+readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+  rename(sobs = Observed, 
+         chao = Chao1, 
+         ace = ACE,
+         simpson = Simpson, 
+         invsimpson = InvSimpson, 
+         shannon = Shannon,
+         fisher = Fisher) %>% 
+  pivot_longer(cols=c(sobs, 
+                      chao, 
+                      ace,
+                      simpson, 
+                      invsimpson, 
+                      shannon,
+                      fisher,
+                      phylodiv),
+               names_to="metric", 
+               values_to = "value") %>% 
+  ggplot(aes(x = n_read, y=value)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, nrow=8, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+```
+
+
+## Median Sequencing Depth.
+Total Observed Richness
+```{r}
+total = median(sample_sums(ps))
+standf = function(x, t=total) round(t * (x / sum(x)))
+ps = transform_sample_counts(ps, standf)
+
+ggplot(data = data.frame("TotalReads" =  phyloseq::sample_sums(ps),
+                         "observed" = phyloseq::estimate_richness(ps, measures = "Observed")[, 1]),
+       aes(x = TotalReads, y = observed)) +
+  geom_point() +
+  geom_smooth(method="lm", se = FALSE) +
+  labs(x = "\nTotal Reads", y = "Observed Richness\n")
+
+```
+
+## Rarefaction at even depth
+- Subsample reads from each sample without replacement.
+- Then estimate alpha-diversity.
+
+```{r fig.height=5, fig.width=10, message=FALSE, warning=FALSE, include=F}
+set.seed(2022) # for repeatable random sub sampling
+
+subsample <- phyloseq::rarefy_even_depth(ps, sample.size = 1500,
+  rngseed = FALSE, replace = TRUE, trimOTUs = TRUE, verbose = TRUE)
+```
+
+## Manually computed diversity metrics
+```{r fig.dim=c(8, 10)}
+set.seed(1234)
+
+alpha_div_tbl <- data.frame(
+  "Sample_ID" = sample_names(subsample),
+  "Variable" = phyloseq::sample_data(subsample)$isolate,
+  "TotalReads" = phyloseq::sample_sums(subsample),
+  "Observed" = phyloseq::estimate_richness(subsample, measures = "Observed"),
+  "ACE" = phyloseq::estimate_richness(subsample, measures = "ACE"),
+  "Estimated" = phyloseq::estimate_richness(subsample, measures = "Chao1"),
+  "Simpson" = phyloseq::estimate_richness(subsample, measures = "Simpson"),
+  "InvSimpson" = phyloseq::estimate_richness(subsample, measures = "InvSimpson"),
+  "Shannon" = phyloseq::estimate_richness(subsample, measures = "Shannon"),
+  "Fisher" = phyloseq::estimate_richness(subsample, measures = "Fisher"),
+  "PhyloDiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(subsample)))), 
+                           tree = phyloseq::phy_tree(subsample))[, 1])
+ count_tbl <- alpha_div_tbl %>%
+  rename_all(tolower) %>% 
+  rename(sobs = observed, 
+         n_reads = totalreads, 
+         chao1 = estimated.chao1, 
+         ace = ace.ace) 
+ 
+ count_tbl %>% 
+  pivot_longer(cols=c(sobs, 
+                      chao1, 
+                      ace,
+                      simpson, 
+                      invsimpson, 
+                      shannon,
+                      fisher,
+                      phylodiv),
+               names_to="metric", 
+               values_to = "value") %>%  
+   select(-ace.se.ace, -estimated.se.chao1) %>%  
+   saveRDS("RDataRDS/ps_alpha_div_tbl.rds")
+ 
+ readRDS("RDataRDS/ps_alpha_div_tbl.rds")
+```
+
+## Visualize alpha diversity
+```{r fig.dim=c(8, 8)}
+set.seed(1234)
+
+readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+  ggplot(aes(x = n_reads, y=value, color = variable)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~metric, ncol=2, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank())
+
+```
+
+# Rarefaction
+
+## Introduction 
+- Rarefaction estimates the richness of a community rarefied to a specific sampling depth.
+- Visualize the unrarefied and rarefied 
+```{r}
+library(tidyverse)
+set.seed(2022)
+
+shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
+                   show_col_types = F) %>%
+select(sample_id = Group, starts_with("Phylo")) %>% 
+  pivot_longer(-sample_id, names_to = "otu", values_to = "count") %>%
+  group_by(sample_id) %>%
+  mutate(total = sum(count)) %>%
+  filter(total > 0) %>%
+  group_by(otu) %>%
+  mutate(total = sum(count)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+  select(-total)
+
+rarefy <- function(x, sample){
+ x <- x[x>0] # remove zeros from x
+  sum(1-exp(lchoose(sum(x) - x, sample) - lchoose(sum(x), sample)))
+}
+
+```
+
+## Plot the observed and rarefied
+```{r}
+shared %>%
+  group_by(sample_id) %>% 
+  summarise(rarefy = rarefy(count, 6000),
+            observed = sum(count > 0),
+            n = sum(count)) %>% 
+  pivot_longer(cols = c(rarefy, observed), values_to = "s", names_to = "type") %>% 
+  ggplot(aes(x = n, y = s, color = type)) +
+  geom_point() + 
+  geom_smooth() +
+  theme_bw()
+
+```
+> Greater depth improves sensitivity.
+
+
+# Alpha  Hypothesis Testing
+- Assess the variation in alpha-diversity between groups.
+- Then accept or reject the null hypothesis that there is no difference in location between groups.
+- Box plots can show the location of the median.
+- Perform samples Wilcoxon test.
+
+## Summarize
+```{r}
+set.seed(1234)
+
+readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+  pivot_wider(id_cols = sample_id, names_from = metric, values_from = value) %>% 
+  group_by(sample_id) %>%
+    dplyr::summarise(
+      median_observed = median(sobs),
+      median_invsimpson = median(invsimpson),
+      median_shannon = median(shannon)
+      )
+```
+
+## Paired Wilcoxon test
+
+### Observed vs Group variable
+```{r}
+bufwilde <- count_tbl %>% 
+  filter(variable == "Buffalo"|
+         variable == "Wildebeest")
+         
+  wilcox.test(bufwilde$sobs, exact = TRUE, conf.int = TRUE)
+
+```
+
+### Shannon vs Group
+```{r}
+wilcox.test(bufwilde$shannon, exact = FALSE, conf.int = TRUE)
+```
+
+### InvSimpson vs Group
+```{r}
+wilcox.test(bufwilde$invsimpson, exact = FALSE, conf.int = TRUE)
+```
+
+### Phylo Diversity vs Group
+```{r}
+wilcox.test(bufwilde$phylodiv, exact = FALSE, conf.int = TRUE)
+```
+
+## Breakaway estimates richness
+- Estimate richness using breakaway
+- Betta function tests for heterogeneity of total diversity (observed plus unobserved) across multiple sites. 
+- It can account or test for fixed effects that may explain diversity. 
+- It returns the significance of the covariates in explaining diversity and a hypothesis test for heterogeneity.
+```{r}
+library(breakaway)
+ba_adiv <- breakaway::breakaway(ps)
+ba_adiv[1]
+
+#Plot estimates
+plot(ba_adiv, ps, color = "isolate")     
+
+#Examine models
+summary(ba_adiv) %>%
+  add_column("Group" = ps %>% otu_table %>% sample_names)  
+
+# Test for group differ
+bt <- breakaway::betta(summary(ba_adiv)$estimate, summary(ba_adiv)$error, make_design_matrix(ps, "isolate"))
+bt$table
+```
+
+
+<!--chapter:end:05a_alpha_diversity.Rmd-->
+
+# (APPENDIX) APPENDIX {-}
+
+# Saved Data Objects
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## RDS Format for Individual Object
+```{r}
+
+rds <- list.files(path="./RDataRDS", pattern = "*.rds", full.names = TRUE)
+rds
+
+```
+
+## RData Format for Multiple Objects
+```{r}
+
+rdata <- list.files(path="./RDataRDS", pattern = "*.RData", full.names = TRUE)
+rdata
+
+```
+
+
+## CSV or TSV Format Files
+```{r}
+
+list.files(path="./RDataRDS", pattern = "*.csv|tsv", full.names = TRUE)
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+## All-in-One Input-Output Data
+lsdata("RDataRDS/saved_objects.RData")
+```
+
+
+## How to reload RDS or RData
+```{block, type="tmbinfo", echo=T}
+### RDS format e.g. foo.rds
+foo <-`readRDS("RDataRDS/foo.rds")`
+
+### RData format e.g. foo.RData
+`load("RDataRDS/foo.RData", verbose = TRUE)`
+
+### List objects in RData
+`lsdata("foo.RData")`
+```
+
+
+
+# Software and Packages
+
+## Basic dependencies
+* `r R.version.string`
+* `tidyverse` (v. `r packageVersion("tidyverse")`)
+* `knitr` (v. `r packageVersion("knitr")`)
+* `rmarkdown` (v. `r packageVersion("rmarkdown")`)
+* `bookdown` (v. `r packageVersion("bookdown")`)
+
+## Available on machine used 
+```{r}
+sessionInfo()
+
+```
+
+
+
+
+<!--chapter:end:99_appendix.Rmd-->
+
+`r if (knitr:::is_html_output()) '
+# References {-}
+'`
+
+
+<!--chapter:end:999-references.Rmd-->
+

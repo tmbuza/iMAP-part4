@@ -15,7 +15,7 @@ library(broom)
 
 # View object content
 load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
-load("../iMAP-part3/RDataRDS/phylo_taxonomy_objects.RData", verbose = T)
+load("../iMAP-part3/RDataRDS/phylo_otu_taxonomy_objects.RData", verbose = T)
 ```
 
 

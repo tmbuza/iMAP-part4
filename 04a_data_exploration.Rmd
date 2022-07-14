@@ -10,7 +10,7 @@ library(metagMisc)
 library(microbiome)
 library(microViz)
 
-otutable_long <- readRDS("../iMAP-part3/RDataRDS/phylo_table_long.rds")
+otutable_long <- readRDS("../iMAP-part3/RDataRDS/phylo_otutable_long.rds")
 load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 ```
 
