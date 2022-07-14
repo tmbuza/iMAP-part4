@@ -11,8 +11,7 @@ rmd_files: [
 "04b_data_distribution.Rmd",
 "04c_statistical_analysis.Rmd",
 "05a_alpha_diversity.Rmd",
-# "05b_beta_diversity.Rmd",
-# "05c_ordination.Rmd",
+"05b_beta_diversity.Rmd",
 "99_appendix.Rmd",
 "999-references.Rmd"
 ]
