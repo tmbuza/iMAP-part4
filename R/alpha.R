@@ -1,13 +1,21 @@
-richness <- function(x) {
-  sum(x > 0)
+richness <- function(x){
+  sum(x>0)
 }
 
-shannon <- function(x) {
-  rabund <- x[x > 0]/sum(x)
+shannon <- function(x){
+  rabund <- x[x>0]/sum(x) 
   -sum(rabund * log(rabund))
 }
 
-simpson <- function(x) {
+simpson <- function(x){
   n <- sum(x)
-  1 - sum((x/n)^2)
+  sum(x * (x-1) / (n * (n-1)))
+  
+}
+
+rarefy <- function(x, sample){
+  
+  x <- x[x>0]
+  sum(1-exp(lchoose(sum(x) - x, sample) - lchoose(sum(x), sample)))
+  
 }
