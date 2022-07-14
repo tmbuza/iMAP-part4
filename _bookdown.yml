@@ -3,16 +3,25 @@ language:
     chapter_name: "Chapter "
 delete_merged_file: true
 
-book_filename: "microbiome-part4"
+# book_filename: "microbiome-part4"
+# output_dir:
+# rmd_files: [
+# "index.Rmd",
+# "04a_data_exploration.Rmd",
+# "04b_data_distribution.Rmd",
+# "04c_statistical_analysis.Rmd",
+# "05a_alpha_diversity.Rmd",
+# "05b_beta_diversity.Rmd",
+# "05c_ordination.Rmd",
+# "99_appendix.Rmd",
+# "999-references.Rmd"
+# ]
+
+book_filename: "alpha_div"
 output_dir:
 rmd_files: [
 "index.Rmd",
-"04a_data_exploration.Rmd",
-"04b_data_distribution.Rmd",
-"04c_statistical_analysis.Rmd",
 "05a_alpha_diversity.Rmd",
-"05b_beta_diversity.Rmd",
-"05c_ordination.Rmd",
 "99_appendix.Rmd",
 "999-references.Rmd"
 ]

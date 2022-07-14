@@ -1,0 +1,408 @@
+# (PART) DIMENSIONALITY REDUCTION {-}
+
+# Distances Between Samples
+
+## Import libraries and data
+```{r}
+library(tidyverse, suppressPackageStartupMessages())
+library(vegan)
+library(ape)
+library(cgwtools)
+library(metagMisc)
+library(OTUtable)
+
+## Import and preprocess data
+load("../iMAP-part1/RDataRDS/metadata_objects.RData", verbose = T)
+metadata <- mo_metadata %>% 
+  dplyr::select(-description)
+
+dataset1 <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
+  dplyr::select(-otu)
+```
+
+## Prepare dataset1 to filter from
+- Dataset 1 is unfiltered
+- Abundance is set at 0.0%
+- Prevalence is set at 0%
+```{r}
+library(OTUtable)
+
+dataset1 %>% 
+  dim()
+
+```
+
+## Prepare dataset 2
+- Data set 2 contains species with a relative abundance of 0.005 or more
+- Abundance is set at 0.005%
+- Prevalence is set at 0%
+```{r}
+library(OTUtable)
+
+dataset2 <- filter_taxa(dataset1, abundance = 0.005, persistence = 0)
+
+cat("Dimension of dataset2\n")
+dim(dataset2)
+
+cat("Dataset2 structure\n\n")
+dataset2[1:5, 1:5]
+
+saveRDS(dataset2, "RDataRDS/dataset2.rds")
+
+# Create matrix
+df_species_mat <- dataset2
+
+# Convert NAs to zeros
+df_species_mat <- df_species_mat %>% 
+	mutate_all(~replace(., is.na(.), 0))
+```
+
+```{r}
+library(vegan)
+library(zCompositions)
+library(tidyverse)
+
+shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
+                   show_col_types = F) %>%
+dplyr:: dplyr::select(Group, starts_with("Phylo")) %>% 
+  pivot_longer(-Group) %>%
+  group_by(Group) %>%
+  mutate(total = sum(value)) %>%
+  filter(total > 1800) %>%
+  group_by(name) %>%
+  mutate(total = sum(value)) %>%
+  filter(total != 0) %>%
+  ungroup() %>%
+dplyr:: dplyr::select(-total)
+
+rand <- shared %>%
+  uncount(value) %>%
+  mutate(rand_name = sample(name)) %>%
+dplyr:: dplyr::select(-name) %>%
+  count(Group, rand_name)
+
+group_count <- rand %>%
+  group_by(Group) %>%
+  summarize(n_seqs = sum(n))
+
+group_count$n_seqs %>% range
+
+rand_df <- rand %>%
+  pivot_wider(names_from=rand_name, values_from=n, values_fill = 0) %>%
+  as.data.frame()
+
+rownames(rand_df) <- rand_df$Group
+rand_df <- rand_df[,-1]
+
+norare_dist <- vegdist(rand_df, method="euclidean")
+rare_dist <- avgdist(rand_df, dmethod="euclidean", sample=min(group_count$n_seqs))
+
+gm <- function(x){
+  
+  exp(mean(log(x[x>0])))
+  
+}
+
+rclr_df <- rand %>%
+  group_by(Group) %>%
+  mutate(rclr = log(n/gm(n))) %>%
+  ungroup() %>%
+dplyr:: dplyr::select(-n) %>%
+  pivot_wider(names_from=rand_name, values_from=rclr, values_fill=0) %>%
+  as.data.frame()
+
+rownames(rclr_df) <- rclr_df$Group
+rclr_df <- rclr_df[,-1]
+
+rclr_dist <- vegdist(rclr_df, method="euclidean")
+
+zclr_df <- cmultRepl(rand_df, method="CZM", output="p-count") %>%
+  as_tibble(rownames = "Group") %>%
+  pivot_longer(-Group) %>%
+  group_by(Group) %>%
+  mutate(zclr = log(value/gm(value))) %>%
+  ungroup() %>%
+dplyr:: dplyr::select(-value) %>%
+  pivot_wider(names_from=name, values_from=zclr, values_fill=0) %>%
+  column_to_rownames("Group")
+
+
+zclr_dist <- vegdist(zclr_df, method="euclidean")
+
+norare_dtbl <- norare_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "Group") %>%
+  pivot_longer(cols= -Group) %>%
+  filter(name < Group)
+
+rare_dtbl <- rare_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "Group") %>%
+  pivot_longer(cols= -Group) %>%
+  filter(name < Group)
+
+rclr_dtbl <- rclr_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "Group") %>%
+  pivot_longer(cols=-Group) %>%
+  filter(name < Group)
+
+zclr_dtbl <- zclr_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "Group") %>%
+  pivot_longer(cols=-Group) %>%
+  filter(name < Group)
+
+inner_join(norare_dtbl, rare_dtbl, by=c("Group", "name")) %>%
+  inner_join(., rclr_dtbl, by=c("Group", "name")) %>%
+  inner_join(., zclr_dtbl, by=c("Group", "name")) %>%
+  inner_join(., group_count, by=c("Group" = "Group")) %>%
+  inner_join(., group_count, by=c("name" = "Group")) %>%
+  mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
+dplyr:: dplyr::select(Group, name, norare=value.x, rare=value.y, rclr=value.x.x, zclr=value.y.y, diffs) %>%
+  pivot_longer(cols=c(norare, rare, rclr, zclr), names_to="method", values_to="dist") %>%
+  ggplot(aes(x=diffs, y=dist)) +
+  geom_point() +
+  facet_wrap(~method, nrow=4, scales="free_y") +
+  geom_smooth()
+```
+
+### Arc sine (asin) transformation
+```{r}
+x <- dataset2
+y <- x/max(x)
+df_asin <- round(asin(y), 6)
+df_asin <- as.matrix(df_asin)
+saveRDS(df_asin, "RDataRDS/df_asin.rds")
+
+df_asin[1:5, 1:4]
+
+```
+
+## Compute Distance between samples
+- Here we use vegdist function on arcsine transformed data.
+- There are other functions out there.
+
+### Bray-Curtis Dissimilarities
+```{r}
+bray_species_dist <- vegan::vegdist(t(rclr_dist), method = "bray")
+bray_species_dist[is.na(bray_species_dist)] = 0
+as.matrix(bray_species_dist)[1:5, 1:5]
+
+saveRDS(bray_species_dist, file = "RDataRDS/bray_species_dist.rds")
+
+```
+
+
+### Aitchison Distance
+- Requires count data which we do not have.
+
+# Hierarchical Clustering
+## Using hclust() function in stats package
+- Using Bray-Curtis (dis)similarities
+- Using average agglomeration method
+- Leaves colored by dplyr::selected variable
+
+### Colored by isolate variable
+```{r}
+library(dendextend)
+dendro <- as.dendrogram(hclust(d = bray_species_dist, method = "average"))
+color <- c("0" = "red", "1" = "blue")
+labels_colors(dendro, labels =T) <- color[metadata$isolate][order.dendrogram(dendro)]
+
+plot(dendro)
+```
+
+### Colored by response variable
+```{r}
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c("0" = "red", "1" = "blue")
+labels_colors(dendro, labels =T) <- color[metadata$response][order.dendrogram(dendro)]
+
+plot(dendro)
+
+```
+
+### Colored by centre variable
+```{r}
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c(AUMC = "red", STM = "blue", UOO = "magenta")
+labels_colors(dendro, labels =T) <- color[metadata$centre][order.dendrogram(dendro)]
+
+plot(dendro)
+
+```
+
+### Colored by female variable
+```{r}
+dendro <- as.dendrogram(hclust(bray_species_dist, method = "average"))
+color <- c("0" = "red", "1" = "blue")
+labels_colors(dendro, labels =T) <- color[metadata$female][order.dendrogram(dendro)]
+
+plot(dendro)
+```
+
+# PCA Ordination
+- Principal Component Analysis (PCA)
+- All variables are scaled to unit variance before the analysis.
+
+## Compute components
+- Using *prcomp()* function in stats package
+```{r}
+pca <- prcomp(bray_species_dist, scale. = TRUE)
+head(pca$rotation)[1:5, 1:5]
+```
+
+## Tabulate explained variance
+```{r}
+pca_variance <- data.frame(PC = paste("PC",  seq(1:nrow(metadata)), sep = ""), 
+                           ExplainedVar = round(pca$sdev^2/sum(pca$sdev^2), 4))
+pca_variance
+```
+
+## Plot screeplot
+```{r}
+pca_variance %>%
+  mutate(PC = factor(pca_variance$PC, levels = gtools::mixedsort(pca_variance$PC))) %>% 
+  ggplot(aes(x = PC, y = ExplainedVar)) +
+  geom_col(fill = "#4682b4") +
+  xlab("Principal Component") +
+  ylab("Variance Explained") +
+  ggtitle("PCA Scree Plot") +
+  ylim(0, 1) +
+  theme(axis.text = element_text(size = 10))
+```
+
+## Extract PC Info of two PCs
+```{r}
+pca_1_2 <- data.frame(PC1 = pca$x[,1], PC2 = pca$x[,2]) %>% dfRowName("sample_id")
+head(pca_1_2)
+```
+
+## Add metadata to PC info
+```{r}
+pca_1_2_meta <- inner_join(metadata, pca_1_2, by = "sample_id")
+head(pca_1_2_meta)
+```
+
+## Color by dplyr::selected variables
+```{r}
+ggplot(pca_1_2_meta, aes(x = PC1, y = PC2, color = isolate)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "isolate", 
+             title = "Principal Component by isolate") +
+  theme(legend.position = "right")
+```
+
+# PCoA Ordination
+- Principal Coordinate Analysis (PCoA)
+- PCoA is Classical Metric Multidimensional Scaling (MDS)
+- All variables are scaled to unit variance before the analysis
+- Using *cmdscale()* function in stats package
+
+## Compute coordinates
+```{r}
+pcoa <- cmdscale(bray_species_dist, k = (nrow(metadata) - 1), eig = TRUE)
+pcoa
+```
+
+## Tabulate explained variance
+```{r}
+pcoa_variance <- data.frame(PCO = paste("PCO",  seq(1:nrow(metadata)), sep = ""), 
+                           ExplainedVar = round(pcoa$eig^2/sum(pcoa$eig^2), 4))
+
+pcoa_variance
+```
+
+## Plot screeplot
+```{r}
+pcoa_variance %>%
+  mutate(PCO = factor(pcoa_variance$PCO, levels = gtools::mixedsort(pcoa_variance$PCO))) %>% 
+  ggplot(aes(x = PCO, y = ExplainedVar)) +
+  geom_col(fill = "#4682b4") +
+  xlab("Principal Coordinate") +
+  ylab("Variance Explained") +
+  ggtitle("PCoA Scree Plot") +
+  ylim(0, 1) +
+  theme(axis.text = element_text(size = 10))
+```
+
+## Create data frame of scores of two PCOs
+```{r}
+pcoa1_2 <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% dfRowName("sample_id")
+head(pcoa1_2)
+```
+
+## Add metadata to PC info
+```{r}
+pcoa_1_2_meta <- inner_join(metadata, pcoa1_2, by = "sample_id")
+head(pcoa_1_2_meta)
+```
+
+## Color by dplyr::selected variables
+```{r}
+ggplot(pcoa_1_2_meta, aes(x = PCO1, y = PCO2, color = isolate)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "isolate", 
+             title = "Principal Component by isolate") +
+  theme(legend.position = "right")
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+## Explained Variance
+# - Side-by-side PCA and PCoA comparison
+
+pca_pcoa_variance <- cbind(pca_variance, pcoa_variance[,-1])
+colnames(pca_pcoa_variance) <- c("PC", "PCA_Var", "PCoA_Var")
+pca_pcoa_variance
+
+saveRDS(pca_pcoa_variance, "RDataRDS/pca_pcoa_variance.rds")
+```
+
+# NMDS Ordination
+
+## Compute NMDS
+- Using *metaMDS()* from vegan package
+```{r include=FALSE}
+set.seed(2022)
+nmds <- metaMDS(t(dataset2),  k = (nrow(metadata))-1, try = 20, trymax = 20)
+```
+
+## Multidimensional Scaling summary
+```{r}
+(nmds)
+
+```
+
+## Plot stressplot
+```{r}
+stressplot(nmds)
+```
+
+## Create data frame of scores of two PCs
+```{r}
+nmds1_2 <- data.frame(NMDS1 = nmds$points[,1], NMDS2 = nmds$points[,2]) %>% dfRowName("sample_id")
+head(nmds1_2)
+```
+
+## Add metadata to PC info
+```{r}
+nmds1_2_meta <- inner_join(metadata, nmds1_2, by = "sample_id")
+head(nmds1_2_meta)
+```
+
+## Color by dplyr::selected variables
+```{r}
+ggplot(nmds1_2_meta, aes(x = NMDS1, y = NMDS2, color = isolate)) +
+  geom_point() +
+  geom_point(size = 3) +
+  labs(color = "isolate", 
+             title = "NMDS colored by isolate") +
+  theme(legend.position = "right")
+```
+
+
