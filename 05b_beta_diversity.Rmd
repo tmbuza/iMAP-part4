@@ -64,15 +64,15 @@ rand_matrix <- rand %>%
 rand_matrix[1:5, 1:5]
 ```
 
-## Computing distance matrices
+# Computing distance matrices
 
-### All-inclusive distance matrix
+## All-inclusive distance matrix
 ```{r}
 norarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean")
 norarefy_bray_dist <- vegdist(rand_matrix, method="bray")
 ```
 
-### Rarefied distance matrix
+## Rarefied distance matrix
 > A rarefied sample is computed from the minimum group depth.
 
 ```{r}
@@ -80,7 +80,7 @@ rarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean", sample = min(group_
 rarefy_bray_dist <- vegdist(rand_matrix, method="bray", sample = min(group_count$n_seqs))
 ```
 
-### Rarefied clr distance matrix {#center-log-ratio-matrix}
+## Aitchson distance matrix
 ```{r}
 gm <- function(x){
   exp(mean(log(x[x>0])))}
@@ -96,7 +96,7 @@ rclr_matrix <- rand %>%
 rclr_eucl_dist <- vegdist(rclr_matrix, method="euclidean")
 ```
 
-
+## Count Zero Multiplicative (CZM) distance
 ```{r message=FALSE, warning=FALSE, paged.print=TRUE}
 zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
   as_tibble(rownames = "sample_id") %>%
@@ -146,17 +146,23 @@ inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
   inner_join(., group_count, by=c("sample_id" = "sample_id")) %>%
   inner_join(., group_count, by=c("name" = "sample_id")) %>%
   mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
-  dplyr::select(sample_id, name, norare=value.x, rare=value.y, rclr=value.x.x, zclr=value.y.y, diffs) %>%
-  pivot_longer(cols=c(norare, rare, rclr, zclr), names_to="method", values_to="dist") %>%
+  dplyr::select(sample_id, name, norare=value.x, rare=value.y,
+                rclr=value.x.x, zclr=value.y.y, diffs) %>%
+  pivot_longer(cols=c(norare, rare, rclr, zclr), names_to="method",
+               values_to="dist") %>%
   ggplot(aes(x=diffs, y=dist)) +
   geom_point() +
   facet_wrap(~method, nrow=4, scales="free_y") +
   geom_smooth()
 ```
 
-### Arc sine (asin) transformation
+## Arc sine (asin) transformation
 ```{r}
-x <- norarefy_bray_dist
+abund <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
+  dplyr::select(sample_id, otu, rel_abund) %>%
+  pivot_wider(id_cols = sample_id, names_from = otu, values_from = rel_abund) %>% 
+  tibble::column_to_rownames("sample_id")
+x <- abund
 y <- x/max(x)
 df_asin <- round(asin(y), 6)
 df_asin <- as.matrix(df_asin)
@@ -175,16 +181,14 @@ plot(as.dendrogram(hclust(d = norarefy_bray_dist, method = "average")))
 ```
 
 
-# Ordination
-
-## Principal Coordinate Analysis (PCoA)
+# Principal Coordinate Analysis (PCoA)
 - PCoA is Classical Metric Multidimensional Scaling (MDS)
 - All variables are scaled to unit variance before the analysis
 - PCoA enables us to plot two axes against each other.
 - Axis 1 explains the most variation in the data, axis 2 explains the second most variation, and so forth.
 
 
-### Using mothur-pcoa.axes
+## Using mothur-pcoa.axes
 - Import PCoA data and metadata.
 - Join metadata and the PCoA data.
 - Plot the first two axes.
@@ -201,7 +205,7 @@ metadata <- read_tsv("../smda-end2end/RDataRDS/mo_metadata.tsv", show_col_types 
 metadata_pcoa <- inner_join(metadata, pcoa, by=c('sample_id'='group'))
 
 ggplot(metadata_pcoa, aes(x=axis1, y=axis2, color=var1)) +
-	geom_point(shape=19, size=2) +
+	geom_point(shape=19, size=3) +
 	coord_fixed() +
 	labs(title="PCoA of Bray-Curtis Distances",
 		x="PCoA Axis 1",
@@ -211,7 +215,7 @@ ggplot(metadata_pcoa, aes(x=axis1, y=axis2, color=var1)) +
 ```
 
 
-### Using distance matrix directly
+## Using distance matrix directly
 - We use the *cmdscale()* function in stats package to compute the axes.
 ```{r}
 set.seed(2022)
@@ -249,5 +253,5 @@ ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
 ```
 
 
-## NMDS Ordination
+# NMDS Ordination
 
