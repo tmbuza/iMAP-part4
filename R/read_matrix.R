@@ -1,5 +1,4 @@
 
-
 read_matrix <- function(file_name){
   
   file <- scan(file_name,
@@ -34,3 +33,4 @@ read_matrix <- function(file_name){
 
   return(dist_matrix)
 }
+
