@@ -10,8 +10,7 @@ library(vegan)
 library(zCompositions)
 library(tidyverse)
 
-shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", 
-                   show_col_types = F) %>%
+shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared", show_col_types = F) %>%
   dplyr::select(sample_id = Group, starts_with("Phylo")) %>% 
   pivot_longer(-sample_id) %>%
   group_by(sample_id) %>%
@@ -21,7 +20,7 @@ shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared
   mutate(total = sum(value)) %>%
   filter(total != 0) %>%
   ungroup() %>%
-dplyr::select(-total)
+  dplyr::select(-total)
 
 shared
 ```
@@ -31,7 +30,7 @@ shared
 rand <- shared %>%
   uncount(value) %>%
   mutate(rand_name = sample(name)) %>%
-dplyr::select(-name) %>%
+  dplyr::select(-name) %>%
   count(sample_id, rand_name)
 
 rand
@@ -61,12 +60,33 @@ rand_matrix <- rand %>%
   pivot_wider(names_from=rand_name, values_from=n, values_fill = 0) %>%
   tibble::column_to_rownames("sample_id")
 
-rand_matrix[1:5, 1:5]
 ```
 
-# Computing distance matrices
+# Distance matrices
 
-## All-inclusive distance matrix
+## Mothur computed distance matrix {#mothur-distance}
+```{r}
+library(tidyverse, suppressPackageStartupMessages())
+source("R/read_matrix.R")
+
+dist_matrix <- read_matrix("../iMAP-part2/data/mothurdata/final.tx.1.subsample.braycurtis.1.lt.dist")
+
+dist_tbl <- tibble::as_tibble(dist_matrix, rownames="sample_id")
+
+sample_lookup <- dist_tbl %>% 
+  dplyr::select(sample_id)
+
+dist_matrix <- dist_tbl %>%
+  pivot_longer(cols=-sample_id, names_to="b", values_to="distances") %>%
+  inner_join(., sample_lookup, by="sample_id") %>%
+  inner_join(., sample_lookup, by=c("b" = "sample_id")) %>%
+  dplyr::select(sample_id, b, distances) %>%
+  pivot_wider(names_from="b", values_from="distances") %>%
+  dplyr::select(-sample_id) %>%
+  as.dist()
+```
+
+## Nonrarefied distance matrix
 ```{r}
 norarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean")
 norarefy_bray_dist <- vegdist(rand_matrix, method="bray")
@@ -104,7 +124,7 @@ zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
   group_by(sample_id) %>%
   mutate(zclr = log(value/gm(value))) %>%
   ungroup() %>%
-dplyr::select(-value) %>%
+  dplyr::select(-value) %>%
   pivot_wider(names_from=name, values_from=zclr, values_fill=0) %>%
   column_to_rownames("sample_id")
 
@@ -254,4 +274,8 @@ ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
 
 
 # NMDS Ordination
+```{r}
+
+```
+
 
