@@ -15,7 +15,7 @@ shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared
   pivot_longer(-sample_id) %>%
   group_by(sample_id) %>%
   mutate(total = sum(value)) %>%
-  filter(total > 1800) %>%
+  filter(total > 0) %>%
   group_by(name) %>%
   mutate(total = sum(value)) %>%
   filter(total != 0) %>%
@@ -42,7 +42,7 @@ rand
 ```{r}
 group_count <- rand %>%
   group_by(sample_id) %>%
-  summarize(n_seqs = sum(n)) %>% 
+  summarise(n_seqs = sum(n)) %>% 
   arrange(n_seqs)
 
 group_count
@@ -56,6 +56,10 @@ group_count$n_seqs %>% range
 
 ### Count table matrix
 ```{r}
+shared_matrix <- shared %>%
+  pivot_wider(names_from=name, values_from=value, values_fill = 0) %>%
+  tibble::column_to_rownames("sample_id")
+
 rand_matrix <- rand %>%
   pivot_wider(names_from=rand_name, values_from=n, values_fill = 0) %>%
   tibble::column_to_rownames("sample_id")
@@ -76,7 +80,7 @@ dist_tbl <- tibble::as_tibble(dist_matrix, rownames="sample_id")
 sample_lookup <- dist_tbl %>% 
   dplyr::select(sample_id)
 
-dist_matrix <- dist_tbl %>%
+mo_dist_matrix <- dist_tbl %>%
   pivot_longer(cols=-sample_id, names_to="b", values_to="distances") %>%
   inner_join(., sample_lookup, by="sample_id") %>%
   inner_join(., sample_lookup, by=c("b" = "sample_id")) %>%
@@ -84,12 +88,14 @@ dist_matrix <- dist_tbl %>%
   pivot_wider(names_from="b", values_from="distances") %>%
   dplyr::select(-sample_id) %>%
   as.dist()
+
+
 ```
 
 ## Nonrarefied distance matrix
 ```{r}
-norarefy_eucl_dist <- vegdist(rand_matrix, method="euclidean")
-norarefy_bray_dist <- vegdist(rand_matrix, method="bray")
+norarefy_eucl_dist <- vegdist(shared_matrix, method="euclidean")
+norarefy_bray_dist <- vegdist(shared_matrix, method="bray")
 ```
 
 ## Rarefied distance matrix
@@ -116,6 +122,10 @@ rclr_matrix <- rand %>%
 rclr_eucl_dist <- vegdist(rclr_matrix, method="euclidean")
 ```
 
+```{r}
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+```
+
 ## Count Zero Multiplicative (CZM) distance
 ```{r message=FALSE, warning=FALSE, paged.print=TRUE}
 zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
@@ -131,34 +141,140 @@ zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
 zclr_eucl_dist  <- vegdist(zclr_matrix, method="euclidean")
 ```
 
+
+```{r}
+library(phyloseq)
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+
+ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="euclidean")
+ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="euclidean")
+ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="euclidean")
+ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="euclidean")
+ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="euclidean")
+ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="euclidean")
+ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="euclidean")
+ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="euclidean")
+ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="euclidean")
+ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="euclidean")
+```
+
+
 ## Creating distance longer dataframes
 ```{r}
 norare_dtbl <- norarefy_eucl_dist %>%
   as.matrix %>%
   as_tibble(rownames = "sample_id") %>%
   pivot_longer(cols= -sample_id) %>%
-  filter(name < sample_id)
+  filter(name < sample_id) %>% 
+  rename(norarefy = value)
 
 rare_dtbl <- rarefy_eucl_dist %>%
   as.matrix %>%
   as_tibble(rownames = "sample_id") %>%
   pivot_longer(cols= -sample_id) %>%
-  filter(name < sample_id)
+  filter(name < sample_id) %>% 
+  rename(rarefy = value)
 
 rclr_dtbl <- rclr_eucl_dist %>%
   as.matrix %>%
   as_tibble(rownames = "sample_id") %>%
   pivot_longer(cols=-sample_id) %>%
-  filter(name < sample_id)
+  filter(name < sample_id) %>% 
+  rename(rclr = value)
 
 zclr_dtbl <- zclr_eucl_dist %>%
   as.matrix %>%
   as_tibble(rownames = "sample_id") %>%
   pivot_longer(cols=-sample_id) %>%
-  filter(name < sample_id)
+  filter(name < sample_id) %>% 
+  rename(zclr = value)
 ```
 
-## Compare distances by point plot
+
+`## Phyloseq-based distance tables
+```{r}
+ps_asin_dtbl <- ps_asin_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_asin = value) %>% 
+  dplyr::select(-name)
+
+ps_identity_dtbl <- ps_identity_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_asin = value) %>% 
+  dplyr::select(-name)
+
+ps_compositional_dtbl <- ps_compositional_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_compositional = value) %>% 
+  dplyr::select(-name)
+
+ps_z_otu_dtbl <- ps_z_otu_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_z_otu = value) %>% 
+  dplyr::select(-name)
+
+ps_z_sample_dtbl <- ps_z_sample_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_z_sample = value) %>% 
+  dplyr::select(-name)
+
+ps_log10_dtbl <- ps_log10_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_log10 = value) %>% 
+  dplyr::select(-name)
+
+ps_log10p_dtbl <- ps_log10p_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_log10p = value) %>% 
+  dplyr::select(-name)
+
+ps_clr_dtbl <- ps_clr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_clr = value) %>% 
+  dplyr::select(-name)
+
+ps_shift_dtbl <- ps_shift_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_shift = value) %>% 
+  dplyr::select(-name)
+
+ps_scale_dtbl <- ps_scale_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_scale = value) %>% 
+  dplyr::select(-name)
+```
+
+
 ```{r}
 inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
   inner_join(., rclr_dtbl, by=c("sample_id", "name")) %>%
@@ -166,14 +282,15 @@ inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
   inner_join(., group_count, by=c("sample_id" = "sample_id")) %>%
   inner_join(., group_count, by=c("name" = "sample_id")) %>%
   mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
-  dplyr::select(sample_id, name, norare=value.x, rare=value.y,
-                rclr=value.x.x, zclr=value.y.y, diffs) %>%
-  pivot_longer(cols=c(norare, rare, rclr, zclr), names_to="method",
+  dplyr::select(sample_id, name, norarefy, rarefy,
+                rclr, zclr, diffs) %>%
+  pivot_longer(cols=c(norarefy, rarefy, rclr, zclr), names_to="method",
                values_to="dist") %>%
   ggplot(aes(x=diffs, y=dist)) +
   geom_point() +
   facet_wrap(~method, nrow=4, scales="free_y") +
   geom_smooth()
+
 ```
 
 ## Arc sine (asin) transformation
@@ -200,6 +317,7 @@ library(dendextend)
 plot(as.dendrogram(hclust(d = norarefy_bray_dist, method = "average")))
 ```
 
+<!-- # (PART) ORDINATION {-} -->
 
 # Principal Coordinate Analysis (PCoA)
 - PCoA is Classical Metric Multidimensional Scaling (MDS)
@@ -237,14 +355,20 @@ ggplot(metadata_pcoa, aes(x=axis1, y=axis2, color=var1)) +
 
 ## Using distance matrix directly
 - We use the *cmdscale()* function in stats package to compute the axes.
+
+## Computing PCoA axes
 ```{r}
 set.seed(2022)
 pcoa <- cmdscale(norarefy_bray_dist, k = (nrow(metadata) - 1), eig = TRUE)
 pcoa_variance <- data.frame(PCO = paste("PCO",  seq(1:nrow(as.matrix(norarefy_bray_dist))), sep = ""), 
                            ExplainedVar = round(pcoa$eig^2/sum(pcoa$eig^2), 4))
+```
 
+## PCoA scree plot
+```{r}
 pcoa_variance %>%
-  mutate(PCO = factor(pcoa_variance$PCO, levels = gtools::mixedsort(pcoa_variance$PCO))) %>% 
+  mutate(PCO = factor(pcoa_variance$PCO, 
+                      levels = gtools::mixedsort(pcoa_variance$PCO))) %>% 
   ggplot(aes(x = PCO, y = ExplainedVar)) +
   geom_col(fill = "#4682b4") +
   xlab("Principal Coordinate") +
@@ -252,7 +376,10 @@ pcoa_variance %>%
   ggtitle("PCoA Scree Plot") +
   ylim(0, 1) +
   theme(axis.text = element_text(size = 10))
+```
 
+## PCoA ordination
+```{r}
 pcoa_1_2_meta <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% 
   dfRowName("sample_id") %>% 
   inner_join(metadata, pcoa_1_2_meta, by = "sample_id")
@@ -265,17 +392,37 @@ labels <- c(glue("PCo Axis 1 ({perc_expned[1]}%)"),
 
 pcoa_1_2_meta %>% 
 ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
-  geom_point() +
-  geom_point(size = 3) +
+	geom_point(shape=19, size=3) +
   labs(x=labels[1], y=labels[2], color = "Variable", 
              title = "Principal Component by Variable") +
   theme(legend.position = "right")
 ```
 
 
-# NMDS Ordination
-```{r}
+# NMDS: Non-metric Dimensional Scaling
+> NMDS uses a random numebr generator, so set a seed to maintain reproducibility.
 
+```{r include=FALSE}
+set.seed(2022)
+bray_dist <- as.matrix(readRDS("RDataRDS/bray_dist.rds"))
+nmds <- metaMDS(comm = bray_dist, autotransform = T)
 ```
 
+### NMDS stress plot 2
+```{r}
+stressplot(nmds)
+```
 
+### NMDS ordination
+```{r}
+nmds$points %>% 
+  as_tibble(rownames = "sample_id") %>% 
+  inner_join(metadata, ., by=c('sample_id')) %>% 
+  ggplot(aes(x = MDS1, y = MDS2, color = var1)) +
+	geom_point(shape=19, size=3) +
+	labs(title="PCoA of Bray-Curtis Distances",
+		x="PCoA Axis 1",
+		y="PCoA Axis 2",
+		color = "Variable") +
+  theme_bw()
+```
