@@ -478,17 +478,17 @@ rarefy <- function(x, sample){
 ```{r}
 shared %>%
   group_by(sample_id) %>% 
-  summarise(rarefy = rarefy(count, 6000),
+  summarise(rarefy = rarefy(count, 5000),
             observed = sum(count > 0),
-            n = sum(count)) %>% 
-  pivot_longer(cols = c(rarefy, observed), values_to = "s", names_to = "type") %>% 
-  ggplot(aes(x = n, y = s, color = type)) +
+            seq_depth = sum(count)) %>% 
+  pivot_longer(cols = c(rarefy, observed), values_to = "observed", names_to = "type") %>% 
+  ggplot(aes(x = seq_depth, y = observed, color = type)) +
   geom_point() + 
   geom_smooth() +
   theme_bw()
 
 ```
-> Greater depth improves sensitivity.
+> Increasing the sampling depth improves sensitivity.
 
 
 # Alpha  Hypothesis Testing
