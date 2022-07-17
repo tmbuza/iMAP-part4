@@ -1,0 +1,162 @@
+
+
+```{r}
+library(phyloseq)
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+
+ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="euclidean")
+ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="euclidean")
+ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="euclidean")
+ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="euclidean")
+ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="euclidean")
+ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="euclidean")
+ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="euclidean")
+ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="euclidean")
+ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="euclidean")
+ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="euclidean")
+```
+
+
+## Creating distance longer dataframes
+```{r eval=FALSE, include=FALSE}
+library(tidyverse)
+norare_dtbl <- norarefy_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols= -sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(norarefy = value) %>%
+  dplyr::select(-name)
+
+rare_dtbl <- rarefy_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols= -sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(rarefy = value) %>% 
+  dplyr::select(-name)
+
+rclr_dtbl <- rclr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(rclr = value) %>% 
+  dplyr::select(-name)
+
+zclr_dtbl <- zclr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(zclr = value) %>% 
+  dplyr::select(-name)
+
+## Phyloseq-based distance tables
+
+ps_asin_dtbl <- ps_asin_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_asin = value) %>% 
+  dplyr::select(-name)
+
+ps_identity_dtbl <- ps_identity_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(identity = value) %>% 
+  dplyr::select(-name)
+
+ps_compositional_dtbl <- ps_compositional_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_compositional = value) %>% 
+  dplyr::select(-name)
+
+ps_z_otu_dtbl <- ps_z_otu_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_z_otu = value) %>% 
+  dplyr::select(-name)
+
+ps_z_sample_dtbl <- ps_z_sample_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_z_sample = value) %>% 
+  dplyr::select(-name)
+
+ps_log10_dtbl <- ps_log10_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_log10 = value) %>% 
+  dplyr::select(-name)
+
+ps_log10p_dtbl <- ps_log10p_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_log10p = value) %>% 
+  dplyr::select(-name)
+
+ps_clr_dtbl <- ps_clr_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_clr = value) %>% 
+  dplyr::select(-name)
+
+ps_shift_dtbl <- ps_shift_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_shift = value) %>% 
+  dplyr::select(-name)
+
+ps_scale_dtbl <- ps_scale_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(ps_scale = value) %>% 
+  dplyr::select(-name)
+```
+
+
+## Compare distances by point plot
+```{r eval=FALSE, include=FALSE}
+library(tidyverse)
+library(phyloseq)
+all_dist <- data.frame(
+  group_count,
+  norare_dtbl,
+  rare_dtbl,
+  rclr_dtbl,
+  zclr_dtbl,
+  ps_clr_dtbl[, -1],
+  ps_asin_dtbl[, -1],
+  ps_identity_dtbl[, -1],
+  ps_compositional_dtbl[, -1],
+  ps_z_otu_dtbl[, -1],
+  ps_z_sample_dtbl[, -1],
+  ps_log10_dtbl[, -1][, -1],
+  ps_log10p_dtbl[, -1],
+  ps_shift_dtbl[, -1],
+  ps_scale_dtbl[, -1])
+
+saveRDS(all_dist, "RDataRDS/all_dist.rds")
+```
+
