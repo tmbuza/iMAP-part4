@@ -122,9 +122,6 @@ rclr_matrix <- rand %>%
 rclr_eucl_dist <- vegdist(rclr_matrix, method="euclidean")
 ```
 
-```{r}
-load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
-```
 
 ## Count Zero Multiplicative (CZM) distance
 ```{r message=FALSE, warning=FALSE, paged.print=TRUE}
@@ -142,20 +139,18 @@ zclr_eucl_dist  <- vegdist(zclr_matrix, method="euclidean")
 ```
 
 
+## Arc sine (asin) transformation
 ```{r}
-library(phyloseq)
-load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+abund <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
+  dplyr::select(sample_id, otu, rel_abund) %>%
+  pivot_wider(id_cols = sample_id, names_from = otu, values_from = rel_abund) %>% 
+  tibble::column_to_rownames("sample_id")
+x <- abund
+y <- x/max(x)
+asin_matrix <- round(asin(y), 6)
+asin_matrix <- as.matrix(asin_matrix)
 
-ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="euclidean")
-ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="euclidean")
-ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="euclidean")
-ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="euclidean")
-ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="euclidean")
-ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="euclidean")
-ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="euclidean")
-ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="euclidean")
-ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="euclidean")
-ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="euclidean")
+asin_eucl_dist  <- vegdist(asin_matrix, method="euclidean")
 ```
 
 
@@ -188,11 +183,54 @@ zclr_dtbl <- zclr_eucl_dist %>%
   pivot_longer(cols=-sample_id) %>%
   filter(name < sample_id) %>% 
   rename(zclr = value)
+
+asin_dtbl <- asin_eucl_dist %>%
+  as.matrix %>%
+  as_tibble(rownames = "sample_id") %>%
+  pivot_longer(cols=-sample_id) %>%
+  filter(name < sample_id) %>% 
+  rename(asin = value)
 ```
 
-
-`## Phyloseq-based distance tables
+## Compare distances graphically
 ```{r}
+inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., rclr_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., zclr_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., asin_dtbl, by=c("sample_id", "name")) %>%
+  inner_join(., group_count, by=c("sample_id" = "sample_id")) %>%
+  inner_join(., group_count, by=c("name" = "sample_id")) %>%
+  mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
+  dplyr::select(sample_id, name, norarefy, rarefy,
+                rclr, zclr, asin,diffs) %>%
+  pivot_longer(cols=c(norarefy, rarefy, rclr, zclr, asin), names_to="method",
+               values_to="dist") %>%
+  ggplot(aes(x=diffs, y=dist)) +
+  geom_point() +
+  facet_wrap(~method, nrow=5, scales="free_y") +
+  geom_smooth()
+```
+
+## Distances using phyloseq-transformed data
+```{r}
+library(phyloseq)
+library(vegan)
+library(tidyverse)
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+
+## Compute distances using vegdist function from `vegan` package
+ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="euclidean")
+ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="euclidean")
+ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="euclidean")
+ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="euclidean")
+ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="euclidean")
+ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="euclidean")
+ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="euclidean")
+ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="euclidean")
+ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="euclidean")
+ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="euclidean")
+
+## Distance long tables
 ps_asin_dtbl <- ps_asin_eucl_dist %>%
   as.matrix %>%
   as_tibble(rownames = "sample_id") %>%
@@ -272,41 +310,6 @@ ps_scale_dtbl <- ps_scale_eucl_dist %>%
   filter(name < sample_id) %>% 
   rename(ps_scale = value) %>% 
   dplyr::select(-name)
-```
-
-
-```{r}
-inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
-  inner_join(., rclr_dtbl, by=c("sample_id", "name")) %>%
-  inner_join(., zclr_dtbl, by=c("sample_id", "name")) %>%
-  inner_join(., group_count, by=c("sample_id" = "sample_id")) %>%
-  inner_join(., group_count, by=c("name" = "sample_id")) %>%
-  mutate(diffs = abs(n_seqs.x - n_seqs.y)) %>%
-  dplyr::select(sample_id, name, norarefy, rarefy,
-                rclr, zclr, diffs) %>%
-  pivot_longer(cols=c(norarefy, rarefy, rclr, zclr), names_to="method",
-               values_to="dist") %>%
-  ggplot(aes(x=diffs, y=dist)) +
-  geom_point() +
-  facet_wrap(~method, nrow=4, scales="free_y") +
-  geom_smooth()
-
-```
-
-## Arc sine (asin) transformation
-```{r}
-abund <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
-  dplyr::select(sample_id, otu, rel_abund) %>%
-  pivot_wider(id_cols = sample_id, names_from = otu, values_from = rel_abund) %>% 
-  tibble::column_to_rownames("sample_id")
-x <- abund
-y <- x/max(x)
-df_asin <- round(asin(y), 6)
-df_asin <- as.matrix(df_asin)
-saveRDS(df_asin, "RDataRDS/df_asin.rds")
-
-df_asin[1:5, 1:4]
-
 ```
 
 
