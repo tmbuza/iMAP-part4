@@ -1,0 +1,89 @@
+# (PART) TAXA PREVALNCE {-}
+
+# Taxa Prevalence
+
+## Load libraries and data
+```{r}
+library(microbiome)
+library(phyloseq)
+library(tidyverse)
+
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+## Using otu count data
+```{r}
+newsample <- sample_data(ps_raw) %>% 
+  dfRowName("sample_id") %>%  
+  as.data.frame() %>% 
+  mutate(Group = isolate, .before = 3) %>% 
+  dplyr::select(-isolate) %>% 
+  tibble::column_to_rownames("sample_id") %>%  
+  sample_data()
+# class(newsample)
+
+newotu <- otu_table(ps_raw)
+newtax <- tax_table(ps_raw)
+newphylo <- phy_tree(ps_raw)
+
+ps <- merge_phyloseq(newotu, newsample, newtax, newphylo)
+prev <- prevalence(ps, detection = 0.0,  sort = F, count = T, include.lowest = F) %>% 
+  as.data.frame()
+
+# sample_data(ps)
+
+colnames(prev) <-  "n"
+prev
+```
+
+
+### Subsetting to core taxa
+- Detection: 0.01 +
+- Prevalence: 30%
+```{r}
+ps_sub <-phyloseq::subset_samples(ps, !is.na(Group))
+ps_c <- microbiome::core(ps_sub, detection  = 0.01, prevalence = 0.3)
+ps_c
+
+```
+
+
+### Similarities with PCA
+
+```{r}
+microbiome::plot_landscape(ps_c, "RDA", "bray", col = "Group") + theme_test()
+```
+
+### Similarities with PCoA (NMDS)
+
+```{r}
+microbiome::plot_landscape(ps_c, "MDS", "bray", col = "Group") + theme_test()
+
+```
+
+### Lineplot: Prevalences vs Core Taxa
+
+```{r}
+detections <- c(0, 0.1, 0.5, 2, 5, 20)/100
+prevalences <- seq(.05, 1, .05)
+microbiome::plot_core(ps_c, 
+          prevalences = prevalences, 
+          detections = detections, 
+          plot.type = "lineplot") + 
+  xlab("Relative Abundance (%)") + 
+  theme_bw()
+```
+
+### Heatmap:Core Taxa
+- Relative abundnace >= 1%
+- In 50% of samples
+```{r}
+detections <- c(0.1, 0.5, 2, 5, 20)/100
+prevalences <- seq(.05, 1, .05)
+microbiome::plot_core(ps_c, 
+          prevalences = prevalences, 
+          detections = detections, 
+          plot.type = "heatmap") + 
+  xlab("Relative Abundance (%)") + 
+  theme_bw()
+```
