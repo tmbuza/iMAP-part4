@@ -38,6 +38,7 @@ knitr::write_bib(c(
 
 ```{r setup, echo=FALSE}
 source(file = "R/common.R")
+theme_set(theme_bw())
 ```
 
 # Exploratory Analysis of Microbiome Data {-#frontpage}
