@@ -1,0 +1,66 @@
+# (PART) CLUSTER ANALYSIS {-}
+
+# Tree Maps {#treemaps}
+
+## Quick glimpse on phyloseq tree
+```{r fig.height=10, fig.width=10, warning=FALSE}
+library(phyloseq)
+
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData")
+
+plot_tree(ps_raw, 
+          color="isolate", 
+          label.tips="taxa_names", 
+          ladderize="left", 
+          plot.margin=0.3)
+
+plot_tree(ps_q2_raw, 
+          color="isolate", 
+          label.tips="taxa_names", 
+          ladderize="left", 
+          plot.margin=0.3)
+
+plot_tree(ps_m3_raw, 
+          color="platform", 
+          shape="direction", 
+          label.tips="taxa_names", 
+          ladderize="left", 
+          plot.margin=0.3)
+
+plot_tree(ps_toy_raw, 
+          color="Var2", 
+          shape="Var1", 
+          label.tips="taxa_names", 
+          ladderize="left", 
+          plot.margin=0.3)
+```
+
+
+#  Heatmaps
+
+## Using phyloseq function
+```{r fig.dim=c(5, 6), message=FALSE, warning=FALSE}
+library(phyloseq)
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData")
+
+plot_heatmap(ps_raw) + coord_flip() + noxlabels + labs(y = "Operational Taxonomic Units")
+plot_heatmap(ps_q2_raw) + coord_flip() + noxlabels + labs(y = "Operational Taxonomic Units")
+plot_heatmap(ps_m3_raw) + coord_flip() + noxlabels + labs(y = "Operational Taxonomic Units")
+plot_heatmap(ps_toy_raw) + coord_flip() + noxlabels + labs(y = "Operational Taxonomic Units")
+```
+
+
+## Using microbiome function
+```{r fig.height=5, fig.width=8}
+ps_z <- microbiome::transform(ps_raw, "Z")
+dfm <- round(microbiome::abundances(ps_z), 1)  %>%
+  dfRowName("otu") %>% 
+  pivot_longer(-otu, names_to = "sample_id") %>% 
+  as.data.frame() %>% 
+  relocate(sample_id)
+
+microbiome::heat(dfm) +
+  theme(text=element_text(size=10), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.key.size = unit(18, "mm")) + coord_flip() + noxlabels + labs(y = "Operational Taxonomic Units")
+```
