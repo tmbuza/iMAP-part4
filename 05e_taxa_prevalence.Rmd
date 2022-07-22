@@ -7,6 +7,7 @@
 library(microbiome)
 library(phyloseq)
 library(tidyverse)
+library(metagMisc)
 
 load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
 ```
@@ -27,17 +28,16 @@ newtax <- tax_table(ps_raw)
 newphylo <- phy_tree(ps_raw)
 
 ps <- merge_phyloseq(newotu, newsample, newtax, newphylo)
-prev <- prevalence(ps, detection = 0.0,  sort = F, count = T, include.lowest = F) %>% 
-  as.data.frame()
+```
 
-# sample_data(ps)
-
-colnames(prev) <-  "n"
-prev
+## Prevalence with detection at 0.05%
+```{r}
+head(prevalence(ps, detection = 0.05,  sort = F, count = T, include.lowest = F) %>% 
+  as.data.frame(), 10)
 ```
 
 
-### Subsetting to core taxa
+## Subsetting to core taxa
 - Detection: 0.01 +
 - Prevalence: 30%
 ```{r}
@@ -48,20 +48,20 @@ ps_c
 ```
 
 
-### Similarities with PCA
+## Similarities with PCA
 
 ```{r}
 microbiome::plot_landscape(ps_c, "RDA", "bray", col = "Group") + theme_test()
 ```
 
-### Similarities with PCoA (NMDS)
+## Similarities with PCoA (NMDS)
 
 ```{r}
 microbiome::plot_landscape(ps_c, "MDS", "bray", col = "Group") + theme_test()
 
 ```
 
-### Lineplot: Prevalences vs Core Taxa
+## Lineplot: Prevalences vs Core Taxa
 
 ```{r}
 detections <- c(0, 0.1, 0.5, 2, 5, 20)/100
@@ -74,7 +74,7 @@ microbiome::plot_core(ps_c,
   theme_bw()
 ```
 
-### Heatmap:Core Taxa
+## Heatmap:Core Taxa
 - Relative abundnace >= 1%
 - In 50% of samples
 ```{r}
