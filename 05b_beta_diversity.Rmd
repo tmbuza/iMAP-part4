@@ -1,10 +1,6 @@
 # (PART) BETA DIVERSITY {-}
 
 # Beta Diversity Dataset {#beta-diversity}
-
-## Data preparation {#prep-beta-data}
-
-### Raw count table
 ```{r}
 library(vegan)
 library(zCompositions)
@@ -22,40 +18,23 @@ shared <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.shared
   ungroup() %>%
   dplyr::select(-total)
 
-shared
-```
-
 ### Random count table
-```{r}
 rand <- shared %>%
   uncount(value) %>%
   mutate(rand_name = sample(name)) %>%
   dplyr::select(-name) %>%
   count(sample_id, rand_name)
 
-rand
-```
-
 ### Group count summary in ascending
-> The table is arranged in ascending order. We need to know the minimum number of sequences for better decisions in sampling depth for statistical analyses.
-
-```{r}
 group_count <- rand %>%
   group_by(sample_id) %>%
   summarise(n_seqs = sum(n)) %>% 
   arrange(n_seqs)
 
-group_count
-```
-
-
 ### Count range
-```{r}
 group_count$n_seqs %>% range
-```
 
 ### Count table matrix
-```{r}
 shared_matrix <- shared %>%
   pivot_wider(names_from=name, values_from=value, values_fill = 0) %>%
   tibble::column_to_rownames("sample_id")
@@ -66,8 +45,8 @@ rand_matrix <- rand %>%
 
 ```
 
-# Distance matrices
 
+# Distance Matrices
 ## Mothur computed distance matrix {#mothur-distance}
 ```{r}
 library(tidyverse, suppressPackageStartupMessages())
@@ -119,7 +98,7 @@ rclr_matrix <- rand %>%
   pivot_wider(names_from=rand_name, values_from=rclr, values_fill=0) %>%
   tibble::column_to_rownames("sample_id")
 
-rclr_eucl_dist <- vegdist(rclr_matrix, method="euclidean")
+rclr_eucl_dist <- vegdist(rclr_matrix, method="bray")
 ```
 
 
@@ -135,22 +114,22 @@ zclr_matrix <- cmultRepl(rand_matrix, method="CZM", output="p-count") %>%
   pivot_wider(names_from=name, values_from=zclr, values_fill=0) %>%
   column_to_rownames("sample_id")
 
-zclr_eucl_dist  <- vegdist(zclr_matrix, method="euclidean")
+zclr_eucl_dist  <- vegdist(zclr_matrix, method="bray")
 ```
 
 
 ## Arc sine (asin) transformation
 ```{r}
-abund <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
+rel_abund <- readRDS("../iMAP-part3/RDataRDS/composite.rds") %>% 
   dplyr::select(sample_id, otu, rel_abund) %>%
   pivot_wider(id_cols = sample_id, names_from = otu, values_from = rel_abund) %>% 
   tibble::column_to_rownames("sample_id")
-x <- abund
+x <- rel_abund
 y <- x/max(x)
 asin_matrix <- round(asin(y), 6)
 asin_matrix <- as.matrix(asin_matrix)
 
-asin_eucl_dist  <- vegdist(asin_matrix, method="euclidean")
+asin_eucl_dist  <- vegdist(asin_matrix, method="bray")
 ```
 
 
@@ -211,24 +190,24 @@ inner_join(norare_dtbl, rare_dtbl, by=c("sample_id", "name")) %>%
   geom_smooth()
 ```
 
-## Distances using phyloseq-transformed data
+# Distances using phyloseq-transformed data
 ```{r}
 library(phyloseq)
 library(vegan)
 library(tidyverse)
-load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T  )
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = T)
 
 ## Compute distances using vegdist function from `vegan` package
-ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="euclidean")
-ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="euclidean")
-ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="euclidean")
-ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="euclidean")
-ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="euclidean")
-ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="euclidean")
-ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="euclidean")
-ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="euclidean")
-ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="euclidean")
-ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="euclidean")
+ps_asin_eucl_dist  <- vegdist(t(otu_table(ps_asin)), method="bray")
+ps_identity_eucl_dist  <- vegdist(t(otu_table(ps_identity)), method="bray")
+ps_compositional_eucl_dist  <- vegdist(t(otu_table(ps_compositional)), method="bray")
+ps_z_otu_eucl_dist  <- vegdist(t(otu_table(ps_z_otu)), method="bray")
+ps_z_sample_eucl_dist  <- vegdist(t(otu_table(ps_z_sample)), method="bray")
+ps_log10_eucl_dist  <- vegdist(t(otu_table(ps_log10)), method="bray")
+ps_log10p_eucl_dist  <- vegdist(t(otu_table(ps_log10p)), method="bray")
+ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="bray")
+ps_shift_eucl_dist  <- vegdist(t(otu_table(ps_shift)), method="bray")
+ps_scale_eucl_dist  <- vegdist(t(otu_table(ps_scale)), method="bray")
 
 ## Distance long tables
 ps_asin_dtbl <- ps_asin_eucl_dist %>%
@@ -313,23 +292,89 @@ ps_scale_dtbl <- ps_scale_eucl_dist %>%
 ```
 
 
-# Hierarchical Clustering
+# Hierarchical Clustering {#cluster_dendrogram}
+## Dendrogram 
+- Using the Bray-Curtis dissimilarities and average distance
+- Colored by variable
 
 ```{r}
 library(dendextend)
-plot(as.dendrogram(hclust(d = norarefy_bray_dist, method = "average")))
+ps_clr_eucl_dist  <- vegdist(t(otu_table(ps_clr)), method="bray")
+clr_bray_average <- as.dendrogram(hclust(ps_clr_eucl_dist, method = "average"))
+metadata <- readRDS("../iMAP-part1/RDataRDS/mo_metadata.rds")
+color <- c(Buffalo = "red", Wildebeest = "blue", Warthog = "brown", Zebra = "purple")
+labels_colors(clr_bray_average) <- color[metadata$isolate][order.dendrogram(clr_bray_average)]
+plot(clr_bray_average)
 ```
 
-<!-- # (PART) ORDINATION {-} -->
+Color code: Buffalo = "red", Wildebeest = "blue", Warthog = "brown", Zebra = "purple"
+> Hypothetically, clustering show that the composition of these sample groups differ based on the Bray-Curtis dissimilarities. The difference can be explored further using ordination (next section).
 
-# Principal Coordinate Analysis (PCoA)
+
+# Distance Ordination {#ordination}
+
+## Load transformed phyloseq objects {#phyloseq-objects}
+```{r}
+load("../iMAP-part3/RDataRDS/transformed_data_.RData", verbose = TRUE)
+```
+
+## Ordination methods
+```{r}
+ord_methods <- phyloseq::ordinate("list")
+ord_methods
+```
+
+
+## PCA: Principal Component Analysis
+
+### Ordination
+- RDA (redundancy analysis) method in vegan package performs principal components analysis (PCA).
+
+```{r}
+set.seed(23)
+
+ps_pca = phyloseq::ordinate(ps_log10p, "RDA", "euclidean")
+p <- phyloseq::plot_ordination(ps_log10p, ps_pca, color="isolate")
+p + geom_point(size=4, alpha=0.75) + 
+  scale_colour_brewer(type="qual", palette="Set1") + 
+  labs(title = "PCA on Bray-Curtis Distance", color = "Group")
+```
+
+### PCA Scree plot 1
+```{r}
+phyloseq::plot_scree(ps_pca) + 
+  geom_bar(stat="identity", fill = "steelblue") + theme_bw() +
+  labs(x = "\nPrincipal Components", y = "Explained Variance\n") +
+  scale_y_continuous(labels = percent)
+```
+
+
+## PCoA: Principal Coordinate Analysis
 - PCoA is Classical Metric Multidimensional Scaling (MDS)
 - All variables are scaled to unit variance before the analysis
 - PCoA enables us to plot two axes against each other.
 - Axis 1 explains the most variation in the data, axis 2 explains the second most variation, and so forth.
 
+### Ordination
+```{r}
+set.seed(24)
 
-## Using mothur-pcoa.axes
+ps_pcoa = phyloseq::ordinate(ps_log10p, "PCoA", "bray", weighted=TRUE)
+p <- phyloseq::plot_ordination(ps_log10p, ps_pcoa, color="isolate")
+p + geom_point(size=4, alpha=0.75) + 
+  scale_colour_brewer(type="qual", palette="Set1") + 
+  labs(title = "PCoA on Bray-Curtis Distance", color = "Group")
+```
+
+### PCoA Scree plot
+```{r}
+phyloseq::plot_scree(ps_pcoa) + 
+  geom_bar(stat="identity", fill = "steelblue") + theme_bw() +
+  labs(x = "\nPrincipal Coordinate", y = "Explained Variance\n") +
+  scale_y_continuous(labels = percent)
+```
+
+### PCoA from mothur-pcoa.axes
 - Import PCoA data and metadata.
 - Join metadata and the PCoA data.
 - Plot the first two axes.
@@ -356,18 +401,33 @@ ggplot(metadata_pcoa, aes(x=axis1, y=axis2, color=var1)) +
 ```
 
 
-## Using distance matrix directly
-- We use the *cmdscale()* function in stats package to compute the axes.
-
-## Computing PCoA axes
+### PCoA from cmdscale() axes
 ```{r}
 set.seed(2022)
-pcoa <- cmdscale(norarefy_bray_dist, k = (nrow(metadata) - 1), eig = TRUE)
+pcoa <- cmdscale(ps_log10p_eucl_dist, k = (nrow(metadata) - 1), eig = TRUE)
 pcoa_variance <- data.frame(PCO = paste("PCO",  seq(1:nrow(as.matrix(norarefy_bray_dist))), sep = ""), 
                            ExplainedVar = round(pcoa$eig^2/sum(pcoa$eig^2), 4))
+### PCoA with formatted y-axis
+pcoa_1_2 <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% 
+  dfRowName("sample_id") %>% 
+  inner_join(metadata, pcoa_1_2, by = "sample_id")
+
+perc_expned <- format(round((100 * pcoa$eig / sum(pcoa$eig)), digits =1), nsmall=1, trim=TRUE)
+
+library(glue)
+labels <- c(glue("PCo Axis 1 ({perc_expned[1]}%)"),
+            glue("PCo Axis 2 ({perc_expned[2]}%)"))
+
+pcoa_1_2 %>% 
+ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
+	geom_point(shape=19, size=3) +
+  labs(x=labels[1], y=labels[2], color = "Variable", 
+             title = "Principal Component by Variable") +
+  theme(legend.position = "right")
 ```
 
-## PCoA scree plot
+
+### PCoA scree plot 2
 ```{r}
 pcoa_variance %>%
   mutate(PCO = factor(pcoa_variance$PCO, 
@@ -381,34 +441,35 @@ pcoa_variance %>%
   theme(axis.text = element_text(size = 10))
 ```
 
-## PCoA ordination
-```{r}
-pcoa_1_2_meta <- data.frame(PCO1 = pcoa$points[,1], PCO2 = pcoa$points[,2]) %>% 
-  dfRowName("sample_id") %>% 
-  inner_join(metadata, pcoa_1_2_meta, by = "sample_id")
 
-perc_expned <- format(round((100 * pcoa$eig / sum(pcoa$eig)), digits =1), nsmall=1, trim=TRUE)
+## NMDS: Nonmetric Multidimensional Scaling
+> NMDS method performs non-multidimensional scalin
 
-library(glue)
-labels <- c(glue("PCo Axis 1 ({perc_expned[1]}%)"),
-            glue("PCo Axis 2 ({perc_expned[2]}%)"))
 
-pcoa_1_2_meta %>% 
-ggplot(aes(x = PCO1, y = PCO2, color = var1)) +
-	geom_point(shape=19, size=3) +
-  labs(x=labels[1], y=labels[2], color = "Variable", 
-             title = "Principal Component by Variable") +
-  theme(legend.position = "right")
+### NMDS ordination from phyloseq object {#nmds-phylo-ord}
+```{r message=FALSE, warning=FALSE}
+### Ordination
+set.seed(25)
+
+ps_nmds = phyloseq::ordinate(ps_log10p, "NMDS", "bray", weighted=TRUE)
+p <- phyloseq::plot_ordination(ps_log10p, ps_nmds, color="isolate")
+p + geom_point(size=4, alpha=0.75) + 
+  scale_colour_brewer(type="qual", palette="Set1") + 
+  labs(title = "PCoA on Bray-Curtis Distance", color = "color")
+
+### NMDS Stress Plot
+
+stressplot(ps_nmds)
 ```
 
 
-# NMDS: Non-metric Dimensional Scaling
-> NMDS uses a random numebr generator, so set a seed to maintain reproducibility.
+### Random number generator
+- Using metaMDS() function from `vegan` package
+- We set a seed to maintain reproducibility.
 
 ```{r include=FALSE}
 set.seed(2022)
-bray_dist <- as.matrix(readRDS("RDataRDS/bray_dist.rds"))
-nmds <- metaMDS(comm = bray_dist, autotransform = T)
+nmds <- metaMDS(comm = ps_log10p_eucl_dist, autotransform = T)
 ```
 
 ### NMDS stress plot 2
@@ -416,16 +477,169 @@ nmds <- metaMDS(comm = bray_dist, autotransform = T)
 stressplot(nmds)
 ```
 
-### NMDS ordination
+### NMDS Ordination 2
 ```{r}
 nmds$points %>% 
   as_tibble(rownames = "sample_id") %>% 
   inner_join(metadata, ., by=c('sample_id')) %>% 
   ggplot(aes(x = MDS1, y = MDS2, color = var1)) +
 	geom_point(shape=19, size=3) +
-	labs(title="PCoA of Bray-Curtis Distances",
-		x="PCoA Axis 1",
-		y="PCoA Axis 2",
-		color = "Variable") +
+	labs(title="NMDS of Bray-Curtis Distances",
+		x="NMDS1",
+		y="NMDS2",
+		color = "Group") +
   theme_bw()
 ```
+
+## DPCoA: Double Principal Coordinate Analysis
+- DPCoA method calculates double principle coordinate analysis (DPCoA) using phylogenetic distance.
+
+### Weighted DPCoA Ordination
+```{r}
+set.seed(26)
+ps_dpcoa_wted = phyloseq::ordinate(ps_log10p, "DPCoA", "wunifrac")
+p <- phyloseq::plot_ordination(ps_log10p, ps_dpcoa_wted, color="isolate")
+p + geom_point(size=4, alpha=0.75) + 
+  scale_colour_brewer(type="qual", palette="Set1") + 
+	labs(title="Double PCoA on Weighted Unifrac Distance",
+		color = "Group") +
+  theme_bw()
+```
+
+### Weighted DPCoA scree plot
+```{r}
+phyloseq::plot_scree(ps_dpcoa_wted) + 
+  geom_bar(stat="identity", fill = "steelblue") + theme_bw() +
+  labs(x = "\n Weighted DPC Axis", y = "Explained Variance\n") +
+  scale_y_continuous(labels = percent) 
+```
+
+### Unweighted DPCoA ordination
+```{r}
+set.seed(26)
+
+ps_dpcoa_unwted = phyloseq::ordinate(ps_log10p, "DPCoA", "unifrac")
+p <- phyloseq::plot_ordination(ps_log10p, ps_dpcoa_unwted, color="isolate")
+p + geom_point(size=4, alpha=0.75) + 
+  scale_colour_brewer(type="qual", palette="Set1") + 
+	labs(title="Double PCoA on Unweighted Unifrac Distance",
+		color = "Group") +
+  theme_bw()
+```
+
+### Unweighted DPCoA scree plot
+```{r}
+phyloseq::plot_scree(ps_dpcoa_unwted) + 
+  geom_bar(stat="identity", fill = "steelblue") + theme_bw() +
+  labs(x = "\n Unweighted DPC Axis", y = "Explained Variance\n") +
+  scale_y_continuous(labels = percent) 
+```
+
+# Comparing Different Ordination Methods
+## Grouped ordination plots
+```{r fig.height=7, fig.width=15}
+library(plyr)
+dist = "bray"
+ord_meths = c("RDA", "PCoA", "NMDS", "DCA", "CCA",  "DPCoA")
+
+plist = llply(as.list(ord_meths), function(i, physeq, dist){
+        ordi_plot = ordinate(physeq, method=i, distance = dist)
+        plot_ordination(
+          physeq, ordi_plot, "samples", 
+          color = "isolate") + 
+          theme(text = element_text(size = 16)) +
+          labs(color = "Group") + 
+          geom_point(size=4) 
+        }, ps_log10p, dist)
+
+library(ggpubr)
+ggarrange(plist[[1]], plist[[2]], plist[[3]], plist[[4]], plist[[5]], plist[[6]], ncol = 3, nrow = 2, common.legend = TRUE, legend = "right" )
+
+
+```
+
+
+## Adding Polygons on Ordination
+```{r fig.height=7, fig.width=15}
+dist = "bray"
+ord_meths = c("RDA", "PCoA", "NMDS", "DCA", "CCA",  "DPCoA")
+names(plist) <- ord_meths
+pdataframe = ldply(plist, function(x){
+    df = x$data[, 1:2]
+    colnames(df) = c("Axis_1", "Axis_2")
+    return(cbind(df, x$data))
+})
+
+names(pdataframe)[1] = "method"
+pdataframe %>% 
+  ggplot(aes(Axis_1, Axis_2, color=isolate, fill=isolate)) +
+  geom_point(size=6) + 
+  geom_polygon() +
+  facet_wrap(~method, scales="free") +
+  scale_fill_brewer(type="qual", palette="Set2") +
+  scale_colour_brewer(type="qual", palette="Set2") + 
+  theme(text = element_text(size = 16)) + 
+  facetsize14
+p
+```
+
+# Beta Rarefaction
+
+## Load phyloseq objects
+```{r}
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+## Sample sums
+```{r}
+sample_sums(ps_raw) 
+
+cat("\nSample sums range (lowest highest)\n")
+sample_sums(ps_raw) %>% range
+```
+
+##  Perform multiple Rarefaction
+- Sample 20 sequences from each sample.
+- Repeat the procedure 10 times.
+
+```{r}
+samp10 <- phyloseq_mult_raref(ps_raw, SampSize = 20, iter = 10)
+sample_sums(samp10[[1]])  # rarefied data
+```
+
+## Unifrac Sample dissimilarity
+- Estimate sample dissimilarity independently for each iteration
+
+```{r include=FALSE}
+samp10_dis <- mult_dissim(samp10, method = "unifrac", average = F)
+samp10_dis[[1]]
+```
+
+## Unifrac Average sample dissimilarities
+```{r include=FALSE}
+samp10_dis_avg <- mult_dissim(samp10, method = "unifrac", average = T)
+samp10_dis_avg 
+```
+
+# Beta Hypothesis Testing
+
+## ADONIS test
+```{r}
+vegan::adonis2(samp10_dis_avg ~ phyloseq::sample_data(ps_raw)$isolate)
+```
+
+## Homogeneity: Dispersion test
+```{r}
+dispr <- vegan::betadisper(samp10_dis_avg, phyloseq::sample_data(ps_raw)$isolate)
+plot(dispr, main = "Homogeneity of multivariate dispersions", sub = "Ordination Centroids and Dispersion. ")
+```
+
+## Dispersion Boxplot
+```{r}
+boxplot(dispr, main = "Dispersion Boxplot", xlab = "Group")
+```
+
+## PERMANOVA: Permutation test for homogeneity
+- Use the permutational multivariate analysis of variance (PERMANOVA)
+- Accept or reject the null hypothesis.
+
