@@ -1,0 +1,294 @@
+# (PART) STATISTICAL ANALYSIS {-}
+
+# Statistical Tests
+> We will use a sub-sample to perform statistical analysis.
+
+## Load libraries and data
+```{r}
+source("R/common.R")
+source("R/lefse.R")
+library(ggtext)
+library(RColorBrewer)
+library(glue)
+library(broom)
+library(tidyverse)
+
+load("RDataRDS/taxa_abund_data.RData", verbose = T)
+```
+
+## Kruskal Wallis Test
+- Kruskal Wallis Test is a non-parametric.
+- Assumes no relationship between the members in each group or between groups.
+
+Here we will demonstrate the following:
+- Statistical test: Kruskal-Wallis test
+- Pairwise test: Paired samples Wilcoxon test or Wilcoxon signed-rank test.
+- Correction method: Benjamini-Hochberg (BH).
+
+```{r kruskal_wallis_fig, fig.dim=c(6, 7)}
+expt_signif <- genus_median_rel_abund %>% 
+  group_by(taxon) %>% 
+  nest() %>% 
+  mutate(expt_tests = map(.x = data,
+                         ~kruskal.test(median_rel_abund ~group, data = .x) %>% 
+                           tidy())) %>%
+  unnest(expt_tests, names_repair = "unique") %>% 
+  ungroup() %>% 
+  mutate(p_adj = p.adjust(p.value, method = "BH")) %>% 
+  dplyr::select(taxon, data, p.value, p_adj, method)
+if(min(expt_signif$p.value) < 0.2) {
+  expt_signif <- expt_signif %>% 
+    filter(p.value < 0.2)
+cat(paste("The computed P-values for this test range from:\n"),
+paste(min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
+### Setting quartile limits
+get_max_quartile <- function(x) {
+  x %>% 
+    group_by(group) %>% 
+    summarise(third_q = quantile(median_rel_abund, prob = 0.75), .groups = "drop") %>%
+    summarise(max_quartile = max(third_q)) %>% 
+    pull(max_quartile)
+}
+### Pairwise comparison
+pairs_test <- expt_signif %>% 
+  mutate(max_quartile = map_dbl(.x = data, ~get_max_quartile(.x))) %>% 
+  mutate(pairwise_tests = map(.x = data,
+                              ~pairwise.wilcox.test(x = .x$median_rel_abund,
+                                                    g = .x$group,
+                                                    p.adjust.method = "BH") %>%
+                                tidy())) %>%
+  unnest(pairwise_tests, names_repair = "unique") %>% 
+  dplyr::select(taxon, group1, group2, p.value = p.value...3, p_adj, max_quartile)
+# Defining x-y and stars coordinates
+pairs_test_x_y <- pairs_test %>% 
+  dplyr::select(taxon, group1, group2, p.value, max_quartile) %>% 
+  mutate(pos = as.numeric(taxon),
+         y = if_else(
+           group1 == "Wildebeest", pos + 0.2, pos),
+         yend = if_else(group2 == "Buffalo", pos, pos - 0.2),
+         x = case_when(
+           group1 == "Wildebeest" &
+             group2 == "Buffalo" ~ max_quartile * 1.3),
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ max_quartile * 1.6,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ max_quartile * 1.9),
+         xend = x,
+         x_star = 1.15*x,
+         y_star = case_when(
+           group1 == "Wildebeest" &
+             group2 == "Buffalo" ~ pos + 0.05))
+           # group1 == "Wildebeest" &
+           #   group2 == "Zebra" ~ pos + 0.05,
+           # group1 == "Wildebeest" &
+           #   group2 == "Warthog" ~ pos + 0.05))
+pairs_test %>%
+  mutate(taxon = str_replace_all(taxon, "\\*", ""),
+         taxon = str_replace_all(taxon, "<br>", " ")) %>% 
+  saveRDS(., "RDataRDS/pairs_test.rds")
+# Add significant stars to the otuplot
+print(otuplot +
+        geom_segment(data = pairs_test_x_y, aes(x = x, xend = xend, y = y,  yend = yend),
+               inherit.aes = F) +
+        geom_text(data = pairs_test_x_y,
+            aes(x = x_star, y = y_star), label = "*", inherit.aes = F) +
+        labs(subtitle = "Point range plot with \nstatistically significant stars"))
+# Significant pairs
+print(readRDS("RDataRDS/pairs_test.rds") %>% 
+  dplyr::select(-max_quartile, 
+         Taxon = taxon, 
+         Group1 = group1, 
+         Group2 = group2,
+         P_value = p.value,
+         P_adj = p_adj,
+         ))
+# Print error message if not significant.
+} else {
+cat("Sorry, no significant values found at 'P ≤ 0.05'\n", 
+paste("P-values range from:",
+      min(expt_signif$p.value), "-",
+      max(expt_signif$p.value)))
+}
+```
+
+
+## LEfSe: Linear discriminant analysis Effect Size {#lefse-analysis}
+> LEfSe determines the significant differences between variables.
+
+```{r lefse_fig}
+source("R/lefse.R")
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+
+metadata <- readRDS("../iMAP-part1/RDataRDS/mo_metadata.rds") %>% 
+  dplyr::select(sample_id, isolate) %>% 
+  drop_na(isolate)
+shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1.subsample.shared", show_col_types = F)
+  
+shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
+run_lefse("Buffalo", "Wildebeest", "buff_wilde")
+
+read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  mutate(OTU = tolower(OTU)) %>% 
+  drop_na(LDA) %>% 
+  inner_join(., Rjoined_sub_object, by = c("OTU" = "otu")) %>% 
+  filter(level == "genus") %>% 
+  mutate(LDA = if_else(Class == "Buffalo", -1 * LDA, LDA),
+         taxon_phylo = fct_reorder(taxon_phylo, LDA)) %>% 
+  ggplot(aes(x = LDA, y = taxon_phylo, fill = Class)) +
+  geom_col() +
+  labs(x = "LDA Score (log 10)", y = NULL) +
+  scale_x_continuous(limits = c(-50, 25), breaks = seq(-50, 25, by=10)) +
+  scale_fill_manual(name = NULL,
+                  breaks = c("Buffalo",
+                             "Wildebeest"),
+                  labels = c("Variable 1",
+                             "Variable 2"),
+                  values = c("blue4",
+                             "green4")) +
+  theme_classic() +
+  theme(
+    axis.text.y = element_markdown(),
+    legend.text = element_markdown()
+  )
+print(read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+  filter(pValue <= 0.05))
+```
+
+```{bash}
+rm -f ./mothur*.logfile
+```
+
+
+> Lefse plot does not show much of the variation. We can create more plot like point range that shows the relative abundance, median etc.
+
+
+# Alpha  Hypothesis Testing
+- Assess the variation in alpha-diversity between groups.
+- Then accept or reject the null hypothesis that there is no difference in location between groups.
+- Box plots can show the location of the median.
+- Perform samples Wilcoxon test.
+
+## Descriptive statistics
+```{r}
+set.seed(1234)
+
+readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+  pivot_wider(id_cols = sample_id, names_from = metric, values_from = value) %>% 
+  group_by(sample_id) %>%
+    dplyr::summarise(
+      median_observed = median(sobs),
+      median_invsimpson = median(invsimpson),
+      median_shannon = median(shannon)
+      )
+```
+
+## Paired Wilcoxon test
+
+### Observed vs Group variable
+```{r}
+bufwilde <- count_tbl %>% 
+  filter(variable == "Buffalo"|
+         variable == "Wildebeest")
+         
+  wilcox.test(bufwilde$sobs, exact = TRUE, conf.int = TRUE)
+
+```
+
+### Shannon vs Group
+```{r}
+wilcox.test(bufwilde$shannon, exact = FALSE, conf.int = TRUE)
+```
+
+### InvSimpson vs Group
+```{r}
+wilcox.test(bufwilde$invsimpson, exact = FALSE, conf.int = TRUE)
+```
+
+### Phylo Diversity vs Group
+```{r}
+wilcox.test(bufwilde$phylodiv, exact = FALSE, conf.int = TRUE)
+```
+
+## Breakaway richness estimates
+- Estimate richness using breakaway
+- Betta function tests for heterogeneity of total diversity (observed plus unobserved) across multiple sites. 
+- It can account or test for fixed effects that may explain diversity. 
+- It returns the significance of the covariates in explaining diversity and a hypothesis test for heterogeneity.
+```{r}
+library(breakaway)
+ba_adiv <- breakaway::breakaway(ps)
+ba_adiv[1]
+
+#Plot estimates
+plot(ba_adiv, ps, color = "isolate")     
+
+#Examine models
+summary(ba_adiv) %>%
+  add_column("Group" = ps %>% otu_table %>% sample_names)  
+
+# Test for group differ
+bt <- breakaway::betta(summary(ba_adiv)$estimate, summary(ba_adiv)$error, make_design_matrix(ps, "isolate"))
+bt$table
+```
+
+
+# Beta Hypothesis Testing
+
+## Load and explore phyloseq objects
+```{r}
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+### Sample sums
+```{r}
+sample_sums(ps_raw) 
+
+cat("\nSample sums range (lowest highest)\n")
+sample_sums(ps_raw) %>% range
+```
+
+###  Perform multiple Rarefaction
+- Sample 20 sequences from each sample.
+- Repeat the procedure 10 times.
+
+```{r}
+samp100 <- phyloseq_mult_raref(ps_raw, SampSize = 100, iter = 10)
+sample_sums(samp100[[1]])  # rarefied data
+```
+
+### Unifrac Sample dissimilarity
+- Estimate sample dissimilarity independently for each iteration
+
+```{r include=FALSE}
+samp100_dis <- mult_dissim(samp100, method = "unifrac", average = F)
+samp100_dis[[1]]
+```
+
+### Unifrac Average sample dissimilarities
+```{r include=FALSE}
+samp100_dis_avg <- mult_dissim(samp100, method = "unifrac", average = T)
+samp100_dis_avg 
+```
+
+## ADONIS test
+
+```{r}
+vegan::adonis2(samp100_dis_avg ~ phyloseq::sample_data(ps_raw)$isolate)
+```
+
+## Homogeneity: Dispersion test
+```{r}
+dispr <- vegan::betadisper(samp100_dis_avg, phyloseq::sample_data(ps_raw)$isolate)
+plot(dispr, main = "Homogeneity of multivariate dispersions", sub = "Ordination Centroids and Dispersion. ")
+```
+
+## Dispersion Boxplot
+```{r}
+boxplot(dispr, main = "Dispersion Boxplot", xlab = "Group")
+```
+
+## PERMANOVA: Permutation test for homogeneity
+- Use the permutational multivariate analysis of variance (PERMANOVA)
+- Accept or reject the null hypothesis.
+
