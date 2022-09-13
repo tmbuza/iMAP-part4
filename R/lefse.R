@@ -4,7 +4,7 @@ library(broom)
 library(tidyverse)
 set.seed(110912)
 
-metadata <- readRDS("../iMAP-part1/RDataRDS/mo_metadata.rds") %>% 
+metadata <- readRDS("../microbiome-part1/RDataRDS/mo_metadata.rds") %>% 
   dplyr::select(sample_id, isolate) %>% 
   drop_na(isolate)
 

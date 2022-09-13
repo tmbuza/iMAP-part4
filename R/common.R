@@ -69,8 +69,14 @@ library(metagMisc)
 if(!require("gifski")) {install.packages("gifski")}
 library(gifski)
 
-# if(!require("")) {install.packages("")}
-# library()
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+if(!require("metagenomeSeq")) {BiocManager::install("metagenomeSeq")}
+library(metagenomeSeq)
+
+if(!require("remotes")) {install.packages("remotes")}
+if(!require("microViz")) {remotes::install_github("david-barnett/microViz")}
 
 # if(!require("")) {install.packages("")}
 # library()

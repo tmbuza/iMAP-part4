@@ -128,7 +128,7 @@ shared_file <- read_tsv("~/Dropbox/CDILLC/GIT_REPOS/smda-end2end/data/final.tx.1
 shared_design <- inner_join(shared_file, metadata, by=c("Group" = "sample_id"))
 run_lefse("Buffalo", "Wildebeest", "buff_wilde")
 
-read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+read_tsv("RDataRDS/mothurdata/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
   mutate(OTU = tolower(OTU)) %>% 
   drop_na(LDA) %>% 
   inner_join(., Rjoined_sub_object, by = c("OTU" = "otu")) %>% 
@@ -151,7 +151,7 @@ read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types =
     axis.text.y = element_markdown(),
     legend.text = element_markdown()
   )
-print(read_tsv("RDataRDS/mothur_out/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
+print(read_tsv("RDataRDS/mothurdata/bush_buff_wilde.1.lefse_summary", show_col_types = F) %>% 
   filter(pValue <= 0.05))
 ```
 
@@ -173,13 +173,13 @@ rm -f ./mothur*.logfile
 ```{r}
 set.seed(1234)
 
-readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
+readRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds") %>%
   pivot_wider(id_cols = sample_id, names_from = metric, values_from = value) %>% 
   group_by(sample_id) %>%
     dplyr::summarise(
       median_observed = median(sobs),
       median_invsimpson = median(invsimpson),
-      median_shannon = median(shannon)
+      median_shannon = median(shannon), .groups = "drop"
       )
 ```
 
@@ -187,9 +187,11 @@ readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
 
 ### Observed vs Group variable
 ```{r}
-bufwilde <- count_tbl %>% 
-  filter(variable == "Buffalo"|
-         variable == "Wildebeest")
+bufwilde <- readRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds") %>% 
+  pivot_wider(id_cols = NULL, names_from = metric, values_from = value) %>% 
+  group_by(sample_id) %>%
+  filter(group == "Buffalo"|
+         group == "Wildebeest")
          
   wilcox.test(bufwilde$sobs, exact = TRUE, conf.int = TRUE)
 
@@ -217,18 +219,20 @@ wilcox.test(bufwilde$phylodiv, exact = FALSE, conf.int = TRUE)
 - It returns the significance of the covariates in explaining diversity and a hypothesis test for heterogeneity.
 ```{r}
 library(breakaway)
-ba_adiv <- breakaway::breakaway(ps)
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+
+ba_adiv <- breakaway::breakaway(ps_raw)
 ba_adiv[1]
 
 #Plot estimates
-plot(ba_adiv, ps, color = "isolate")     
+plot(ba_adiv, ps_raw, color = "isolate")     
 
 #Examine models
 summary(ba_adiv) %>%
-  add_column("Group" = ps %>% otu_table %>% sample_names)  
+  add_column("Group" = ps_raw %>% otu_table %>% sample_names)  
 
 # Test for group differ
-bt <- breakaway::betta(summary(ba_adiv)$estimate, summary(ba_adiv)$error, make_design_matrix(ps, "isolate"))
+bt <- breakaway::betta(summary(ba_adiv)$estimate, summary(ba_adiv)$error, make_design_matrix(ps_raw, "isolate"))
 bt$table
 ```
 
@@ -291,4 +295,34 @@ boxplot(dispr, main = "Dispersion Boxplot", xlab = "Group")
 ## PERMANOVA: Permutation test for homogeneity
 - Use the permutational multivariate analysis of variance (PERMANOVA)
 - Accept or reject the null hypothesis.
+
+
+# Statistica analysis Using `mothur` Commands in R {#mothur-stats-in-R}
+
+## [AMOVA](https://mothur.org/wiki/amova/): Analysis of Molecular Variance
+- Is a non-parametric method analog of ANOVA.
+```{r}
+amova <- '~/bin/mothur "#amova(phylip=final.tx.1.subsample.braycurtis.1.lt.dist, design=../iMAP-part1/RDataRDS/var1.design, inputdir=../iMAP-part2/data/mothurdata/, outputdir=RDataRDS/mothurdata)"'
+system(amova)
+read_tsv("RDataRDS/mothurdata/final.tx.1.subsample.braycurtis.1.lt.amova")
+```
+
+## [HOMOVA](https://mothur.org/wiki/homova/): Homogeneity of Molecular Variance
+- Is a non-parametric method analog of Bartlett's test 
+```{r}
+homova <- '~/bin/mothur "#homova(phylip=final.tx.1.subsample.braycurtis.1.lt.dist, design=../iMAP-part1/RDataRDS/var1.design, inputdir=../iMAP-part2/data/mothurdata/, outputdir=RDataRDS/mothurdata)"'
+system(homova)
+read_tsv("RDataRDS/mothurdata/final.tx.1.subsample.braycurtis.1.lt.homova")
+```
+
+## [ANOSIM](https://mothur.org/wiki/anisim/): Analysis of Similarity
+```{r}
+anosim <- '~/bin/mothur "#anosim(phylip=final.tx.1.subsample.braycurtis.1.lt.dist, design=../iMAP-part1/RDataRDS/var1.design, inputdir=../iMAP-part2/data/mothurdata/, outputdir=RDataRDS/mothurdata)"'
+system(anosim)
+read_tsv("RDataRDS/mothurdata/final.tx.1.subsample.braycurtis.1.lt.anosim")
+```
+
+```{bash}
+rm -f *.logfile
+```
 

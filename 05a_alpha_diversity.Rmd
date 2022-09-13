@@ -326,35 +326,18 @@ set.seed(1234)
 
 ps <- ps_raw
 
-alpha_div_tbl <- data.frame(
+ps_alpha_diversity_tbl <- data.frame(
   "sample_id" = sample_names(ps),
   "group" = phyloseq::sample_data(ps)$isolate,
-  "n_read" = phyloseq::sample_sums(ps),
+  "n_reads" = phyloseq::sample_sums(ps),
   phyloseq::estimate_richness(ps),
   "phylodiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(ps)))), 
                            tree = phyloseq::phy_tree(ps))[, 1])
 
-saveRDS(alpha_div_tbl, file = "RDataRDS/ps_alpha_div_tbl.rds")
+saveRDS(ps_alpha_diversity_tbl, file = "RDataRDS/ps_alpha_diversity_tbl.rds")
 
 readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
-  rename(sobs = Observed, 
-         chao = Chao1, 
-         ace = ACE,
-         simpson = Simpson, 
-         invsimpson = InvSimpson, 
-         shannon = Shannon,
-         fisher = Fisher) %>% 
-  pivot_longer(cols=c(sobs, 
-                      chao, 
-                      ace,
-                      simpson, 
-                      invsimpson, 
-                      shannon,
-                      fisher,
-                      phylodiv),
-               names_to="metric", 
-               values_to = "value") %>% 
-  ggplot(aes(x = n_read, y=value)) +
+  ggplot(aes(x = n_reads, y=value)) +
   geom_point() +
   geom_smooth() +
   facet_wrap(~metric, nrow=8, scales="free_y") + 
@@ -379,6 +362,11 @@ ggplot(data = data.frame("TotalReads" =  phyloseq::sample_sums(ps),
 
 ```
 
+```{r}
+plot_richness(ps, x = "isolate", color = "isolate") +
+  labs(x = "", color = "Group")
+```
+
 ## Rarefaction at even depth
 - Subsample reads from each sample without replacement.
 - Then estimate alpha-diversity.
@@ -394,9 +382,9 @@ subsample <- phyloseq::rarefy_even_depth(ps, sample.size = 1500,
 ```{r fig.dim=c(8, 10)}
 set.seed(1234)
 
-alpha_div_tbl <- data.frame(
+data.frame(
   "Sample_ID" = sample_names(subsample),
-  "Variable" = phyloseq::sample_data(subsample)$isolate,
+  "Group" = phyloseq::sample_data(subsample)$isolate,
   "TotalReads" = phyloseq::sample_sums(subsample),
   "Observed" = phyloseq::estimate_richness(subsample, measures = "Observed"),
   "ACE" = phyloseq::estimate_richness(subsample, measures = "ACE"),
@@ -406,15 +394,12 @@ alpha_div_tbl <- data.frame(
   "Shannon" = phyloseq::estimate_richness(subsample, measures = "Shannon"),
   "Fisher" = phyloseq::estimate_richness(subsample, measures = "Fisher"),
   "PhyloDiv" = picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(subsample)))), 
-                           tree = phyloseq::phy_tree(subsample))[, 1])
- count_tbl <- alpha_div_tbl %>%
+                           tree = phyloseq::phy_tree(subsample))[, 1]) %>% 
   rename_all(tolower) %>% 
   rename(sobs = observed, 
          n_reads = totalreads, 
          chao1 = estimated.chao1, 
-         ace = ace.ace) 
- 
- count_tbl %>% 
+         ace = ace.ace) %>% 
   pivot_longer(cols=c(sobs, 
                       chao1, 
                       ace,
@@ -426,23 +411,36 @@ alpha_div_tbl <- data.frame(
                names_to="metric", 
                values_to = "value") %>%  
    select(-ace.se.ace, -estimated.se.chao1) %>%  
-   saveRDS("RDataRDS/ps_alpha_div_tbl.rds")
+   saveRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds")
  
- readRDS("RDataRDS/ps_alpha_div_tbl.rds")
+ readRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds")
 ```
 
-## Visualize alpha diversity
+### Boxplot
 ```{r fig.dim=c(8, 8)}
 set.seed(1234)
 
-readRDS("RDataRDS/ps_alpha_div_tbl.rds") %>%
-  ggplot(aes(x = n_reads, y=value, color = variable)) +
-  geom_point() +
-  geom_smooth() +
-  facet_wrap(~metric, ncol=2, scales="free_y") + 
+readRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds") %>%
+  ggplot(aes(x = n_reads, y=value, color = group)) +
+  geom_boxplot() +
+  facet_grid(~metric, scales="free_y") +
   theme_bw() +
-  theme(panel.grid = element_blank())
+  theme(panel.grid = element_blank()) + 
+   theme(axis.text.x = element_text(size=6, angle = 90, hjust = 0))
 
+```
+
+### Violin
+```{r fig.dim=c(8, 8), message=FALSE, warning=FALSE}
+set.seed(1234)
+
+readRDS("RDataRDS/ps_alpha_diversity_tbl_long.rds") %>%
+  ggplot(aes(x = n_reads, y=value, color = group)) +
+  geom_violin() +
+  facet_grid(~metric, scales="free_y") + 
+  theme_bw() +
+  theme(panel.grid = element_blank()) + 
+   theme(axis.text.x = element_text(size=6, angle = 90, hjust = 0))
 ```
 
 # Rarefaction
@@ -488,5 +486,6 @@ shared %>%
   theme_bw()
 
 ```
+
 > Increasing the sampling depth improves sensitivity.
 

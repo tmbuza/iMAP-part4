@@ -1,0 +1,1006 @@
+---
+title: "Exploratory Analysis of Microbiome Data in R"
+subtitle: "Integrated solutions for better results"
+author: "<strong>Teresia Mrema Buza</strong>"
+date: "Updated on `r Sys.Date()`"
+site: bookdown::bookdown_site
+knit: bookdown::render_book
+output:
+  bookdown::bs4_book:
+    includes:
+      in_header:
+    template: bs4_template.html
+documentclass: book
+classoption: openany #remove empty pages in pdf doc
+colorlinks: true
+css:
+- style.css
+- css/style.css
+always_allow_html: true
+fig_caption: true
+fontsize: 12pt
+geometry: margin=1in
+indent: false
+keep_tex: true
+link-citations: true
+mainfont: Times New Roman
+biblio-style: apalike
+description: |
+  This is a practical user's guide for **Systematic Microbiome Data Analysis in R**. The guide provides integrated and highly curated solutions for achieving better results.
+---
+
+
+```{r pkgbiblib, include=FALSE}
+knitr::write_bib(c(
+  .packages(), 'base','bookdown','rmarkdown','tidyverse','shiny','vegan','data.table, dendextend, robCompositions, microbiome, ALDEx2, caret, rms, phyloseq'
+), 'library/packages.bib')
+```
+
+```{r setup, echo=FALSE}
+source(file = "R/common.R")
+theme_set(theme_bw())
+```
+
+# Exploratory Analysis of Microbiome Data {-#frontpage}
+
+```{r include=FALSE}
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(rsvg)
+
+# 1. Make a graph
+graph <- DiagrammeR::grViz("
+digraph {
+graph [layout = dot, rankdir = TD]
+
+node [
+shape = box, 
+style = filled, 
+fillcolor = white, 
+fontname = Helvetica,
+penwidth = 2.0] 
+
+edge [arrowhead = diamond]
+
+A [label = 'EXPLORATORY \nANALYSIS OF \nMICROBIOME DATA', fillcolor = white, penwidth = 5.0]
+B [label = 'Preprocesed\nTidy Objects']
+C [label = 'Data Visualization']
+D [label = 'Data Distribution']
+E [label = 'Barcharts']
+F [label = 'Boxplots']
+G [label = 'Heatmaps']
+H [label = 'Correlation']
+
+
+{A}  -> B [label = '  Input Data']
+{B}  -> C
+{C}  -> D
+{D}  -> E
+{D}  -> F
+{C}  -> H
+{H}  -> G
+
+
+}", height = 500, width = 500)
+
+# 2. Convert to SVG, then save as png
+part4_flow = DiagrammeRsvg::export_svg(graph)
+part4_flow = charToRaw(part4_flow) # flatten
+rsvg::rsvg_png(part4_flow, "img/part4_flow.png")
+```
+
+
+<a href=""><img src="images/abund_bar.gif" alt="Book cover" width="100%" style="padding: 50px 0px 50px 0px; float: right;"/></a>
+
+## Quick Glimpse {-}
+Investigating the role of microbial communities in health and disease requires a thorough knowledge of the entire analytical process. Using wrong approaches can cost a significant amount of dollars and lengthy process to achieve the desired results. This is <b>PART 4</b> of the practical user guides intended to provide analytical support to the microbiome research community. The entire guide is reproducible, allowing users to easily follow along. If interested, user may use this model to publish their findings in a book format.
+
+## Structure of this guide {-}
+This guide is divided into chapters to facilitate easy navigation. Each chapter contains several sections as displayed in the navigation bars on the left and right. Click the hyper-linked text if you want to jump into a specific chapter or section.
+
+## Code availability {-}
+The code that generated this guide is available at a public [GitHub repository](https://github.com/tmbuza/iMAP-part4/) or via a [GH-Page](https://tmbuza.github.io/iMAP-part4/). If interested you can request a consulting service by contacting the developer of this repo using <a href="https://complexdatainsights.com/contact-us">this contact form</a>. 
+
+<!--chapter:end:index.Rmd-->
+
+# (PART) EXPLORATORY ANALYSIS {-}
+
+# Review Preprocessed Data {#explore-data}
+
+## Load libraries and data
+```{r}
+source("R/common.R")
+library(phyloseq)
+library(metagMisc)
+library(microbiome)
+library(microViz)
+
+otutable_long <- readRDS("../iMAP-part3/RDataRDS/phylo_otutable_long.rds")
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+Let's use objects created from `mothur` output.
+
+
+## How many reads per sample
+```{r}
+seqcount_per_sample <- otutable_long %>% 
+  group_by(sample_id) %>% 
+  summarise(nseqs = sum(count), .groups = "drop") %>% 
+  arrange(nseqs)
+
+seqcount_per_sample
+
+min_count <- min(seqcount_per_sample$nseqs)
+max_count <- max(seqcount_per_sample$nseqs)
+
+saveRDS(seqcount_per_sample, "RDataRDS/seqcount_per_sample.rds")
+save(seqcount_per_sample, min_count, max_count, file = "RDataRDS/count_min_max_seqs.RData")
+```
+
+
+```{r}
+load("../iMAP-part3/RDataRDS/phyloseq_objects.RData", verbose = T)
+```
+
+
+```{r}
+(ps <- ps_raw)
+```
+
+
+## Number of taxa
+```{r}
+ntaxa(ps)
+```
+
+## Splitting taxon
+```{r}
+phyloseq_sep_tax(ps, TaxRank = "kingdom", drop_NA = FALSE)
+
+```
+
+
+## Number of samples
+```{r}
+nsamples(ps)
+```
+
+## Sample names
+```{r}
+sample_names(ps)
+```
+
+## Rank names
+```{r}
+rank_names(ps)
+```
+
+## Sample variables
+```{r}
+sample_variables(ps)
+```
+
+## Abundance table
+```{r}
+otu_table(ps)[1:10, 1:5]
+```
+
+## Taxonomy table
+```{r}
+tax_table(ps)[1:5, 1:3]
+```
+
+Phylogenetic tree
+```{r}
+phy_tree(ps)
+```
+
+## Taxa names
+```{r}
+taxa_names(ps)[1:5]
+```
+
+## Characteristics of this data
+- Using the `microbiome` R package.
+```{r message=FALSE, warning=FALSE}
+library(microbiome)
+microbiome::summarize_phyloseq(ps)
+
+```
+
+> Is the data composiosional? Find out fron the first line of the output from tbe previous command.
+
+## Sort samples by abundance
+
+> Sorting samples helps in sub-sampling.
+
+```{r}
+sort(phyloseq::sample_sums(ps), decreasing = F)
+```
+
+## Drop samples below a threshold
+```{r}
+ps2000 <- phyloseq::subset_samples(ps, phyloseq::sample_sums(ps) > 2000)
+ps2000
+```
+
+## Drop taxa below a threshold
+```{r}
+pstaxa10 <- phyloseq::prune_taxa(phyloseq::taxa_sums(ps) > 10, ps)
+pstaxa10
+```
+
+> Check if by dropping data below a specified threshold retained all sample. Adjust the threshold for desired output.
+
+## Explore Sample Data Attributes
+```{r}
+ps %>% sample_data %>% dplyr::count(isolate)
+
+```
+
+
+<!--chapter:end:04a_data_exploration.Rmd-->
+
+# Data Distribution {#data-visuals}
+
+```{r}
+## Load libraries and data
+source("R/common.R")
+library(tidyverse)
+library(ggtext)
+library(phyloseq)
+library(metagMisc)
+library(microbiome)
+library(microViz)
+library(RColorBrewer)
+library(glue)
+library(broom)
+
+# View object content
+load("../iMAP-part3/RDataRDS/Rjoined_objects.RData", verbose = T)
+load("../iMAP-part3/RDataRDS/phylo_otu_taxonomy_objects.RData", verbose = T)
+```
+
+
+```{block, type="tmbinfo", echo=T}
+## Limit of detection (LoD)
+
+> **Heads up**: Some analyses may introduce infinite values in continuous x-axis for zero relative abundance. The rows containing non-finite values will be removed. Solution is replace the zeros with a tiny non-significant value below the LoD (limit od detection).
+
+Whenever applicable use the command below to compute LoD:
+```
+
+```{r echo=TRUE}
+nseqs_per_sample <- Rjoined_sub_object %>% 
+  group_by(sample_id) %>%
+  summarise(N = sum(count), .groups="drop") %>%
+  count(N) %>%
+  pull(N)
+
+stopifnot(length(nseqs_per_sample) == 1)
+
+lod <- max(100* 1/nseqs_per_sample)
+```
+
+
+## Prepare input data {#taxa-abundance}
+Example may include:
+
+- Taxa relative abundance
+- Taxa mean relative abundance
+- Taxa median relative abundance
+
+```{r}
+## Taxa relative abundance
+
+#-------kingdom----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "kingdom",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 0,
+            median = median(rel_abund),
+            .groups = "drop")
+
+kingdom_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------phylum----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "phylum",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+phylum_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------class----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "class",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+class_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------order----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "order",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+order_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------family----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "family",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+family_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------genus----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "genus",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(rel_abund) < 2,
+            median = median(rel_abund),
+            .groups = "drop")
+
+genus_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = 100 * sum(rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+save(kingdom_rel_abund, 
+     phylum_rel_abund, 
+     class_rel_abund, 
+     order_rel_abund, 
+     family_rel_abund, 
+     genus_rel_abund,
+     file = "RDataRDS/taxa_abund_data.RData")
+
+
+## Taxa median relative abundance
+
+#-------kingdom----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "kingdom",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+kingdom_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------phylum----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "phylum",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+phylum_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------class----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "class",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 3,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+class_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------order----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "order",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+order_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------family----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "family",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*",taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 3,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+family_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------genus----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  filter(level == "genus",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+genus_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+#-------genus_glued----------------
+otu_rel_abund <- Rjoined_sub_object %>% 
+  select(-taxon) %>% 
+  rename(taxon = taxon_phylo) %>% 
+  filter(level == "genus",
+         group == "Buffalo" | group == "Wildebeest",
+         !grepl(".*unassigned.*|.*nclassified.*|.*ncultured.*", taxon)
+         ) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(rel_abund = sum(rel_abund), .groups = "drop") %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = 100*median(rel_abund), .groups = "drop")
+
+taxon_pool <- otu_rel_abund %>%
+  group_by(taxon) %>%
+  summarise(pool = max(median_rel_abund) < 2,
+            median = median(median_rel_abund),
+            .groups = "drop")
+
+genus_glued_median_rel_abund <- inner_join(otu_rel_abund, taxon_pool, by = "taxon" ) %>% 
+  mutate(taxon = if_else(pool, "Other", as.character(taxon))) %>% 
+  group_by(sample_id, taxon, group) %>% 
+  summarise(median_rel_abund = sum(median_rel_abund), 
+            median = min(median),
+            .groups = "drop") %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0))
+
+resave(kingdom_median_rel_abund, 
+     phylum_median_rel_abund,  
+     class_median_rel_abund, 
+     order_median_rel_abund,  
+     family_median_rel_abund,  
+     genus_median_rel_abund,
+     genus_glued_median_rel_abund,
+     file = "RDataRDS/taxa_abund_data.RData")
+```
+
+## Quick glimpse on taxa abundance across samples {#taxa-by-samples}
+
+```{r stacked_bar_fig, fig.height=4, fig.width=6, animation.hook='gifski', interval=2}
+kingdom_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by kingdom",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+
+
+phylum_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by phylum",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+
+
+class_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by class",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+
+
+order_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by order",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+
+
+family_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by family",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+
+genus_median_rel_abund %>%
+  ggplot(aes(x = sample_id, y = median_rel_abund, fill = taxon)) +
+  geom_col(position = "fill") +
+labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Stacked barchart filled by genus",
+       fill = NULL) +
+  theme_classic() +
+  theme(legend.text = element_markdown(),
+        legend.key.size = unit(10, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks.x = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+```
+
+
+## Genera relative abundance {#genus_abundance}
+
+### Grouped barchart
+```{r}
+genus_median_rel_abund  <- genus_glued_median_rel_abund
+genus_median_rel_abund %>%
+  ggplot(aes(x = taxon, y = median_rel_abund, fill = group)) +
+  geom_col(width=0.8, position = position_dodge()) +
+  labs(x = NULL,
+       y = "Relative Abundance (%)",
+      subtitle = "Grouped Barchart",
+       fill = NULL) +
+  theme_classic() +
+  theme(axis.text.x = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        axis.text.y = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        panel.background = element_blank(),
+        panel.grid.major.x =  element_line(colour = "lightgray", size = 0.1),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip()
+```
+
+
+### Jitter strip chart
+```{r}
+genus_median_rel_abund %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, fill = group)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3, 
+    dodge.width = 0.4),
+    pch = 21, 
+    stroke = 0,
+    size = 1.8) +
+  labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Jitter Strip Plot",
+    fill = NULL) +
+    theme_classic() +
+    theme(
+      axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+      legend.key.size = unit(12, "pt"),
+      panel.background = element_blank(),
+      panel.grid.major.y =  element_line(colour = "lightgray", size = 0.1),
+      panel.border = element_blank()) +
+    guides(fill = guide_legend(ncol=1)) +
+    scale_x_continuous(expand = c(0, 0))
+```
+
+
+### Box plot
+
+```{r boxplot_fig}
+genus_median_rel_abund %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+    # scale_color_manual(name = NULL,
+    #                 breaks = c("Buffalo", "Wildebeest"),
+    #                 labels = c("Buffalo", "Wildebeest"),
+    #                 values = c("blue4", "red")) +
+    labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Simple BoxPlot",
+    color = NULL) +
+    theme_classic() +
+    theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 2, r = 2, b = 2, l = 2)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+```
+
+
+### Jitter on Boxplot
+```{r box_jitter_fig}
+genus_median_rel_abund %>%
+  mutate(taxon = factor(taxon),
+         taxon = fct_reorder(taxon, median, .desc = F),
+         taxon = fct_shift(taxon, n = 0)) %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.8)) +
+  geom_jitter(position = position_jitterdodge(
+    jitter.width = 0.3,
+    dodge.width = 0.4),
+    pch = 19) +
+    # scale_color_manual(name = NULL,
+    #                 breaks = c("Buffalo", "Wildebeest"),
+    #                 labels = c("Buffalo", "Wildebeest"),
+    #                 values = c("blue4", "red")) +
+    labs(
+    y = NULL,
+    x = "Relative Abundance (%)",
+    title = "Jitter on BoxPlot",
+    color = NULL) +
+    theme_classic() +
+    theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, hjust = 1, vjust = 1),
+        # axis.text.x = element_markdown(),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 5, r = 5, b = 5, l = 5)) +
+  guides(fill = guide_legend(ncol=1)) +
+  scale_x_continuous()
+```
+
+
+
+### Point range with log scaled axis {#log-scaled}
+```{r log_scaled_fig}
+otuplot <- genus_median_rel_abund %>% 
+  # mutate(median_rel_abund = if_else(median_rel_abund == 0, (2/3)*lod, median_rel_abund)) %>%
+  ggplot(aes(y = taxon, x = median_rel_abund, color = group)) +
+  # geom_vline(xintercept = lod, size = 0.1, linetype = 2) +
+  stat_summary(fun.data = median_hilow, geom = "pointrange",
+               fun.args = list(conf.int = 0.5),
+               position = position_dodge(width = 0.5),
+               show.legend = T
+               ) +
+  coord_trans(x = "log10") +
+  scale_x_continuous(limits = c(NA, 100),
+                     breaks = c(0.1, 1, 10, 100),
+                     labels = c(0.1, 1, 10, 100)) +
+labs(y = NULL,
+     x = "Relative Abundance (log10)",
+     subtitle = "Point range plot at 50th percentile with \nlog10 scaled axis, outliers are removed",
+     color = NULL) +
+  theme_classic() +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(angle = 0, vjust = 0.5),
+        axis.text.x = element_markdown(angle = 0, hjust = 0.5),
+        legend.text = element_markdown(),
+        legend.key.size = unit(12, "pt"),
+        legend.background = element_rect(colour = "gray", fill = NA),
+        legend.margin = margin(t = 2, r = 2, b = 2, l = 2))
+
+otuplot
+
+resave(otuplot, file = "RDataRDS/taxa_abund_data.RData")
+```
+
+
+
+<!--chapter:end:04b_data_distribution.Rmd-->
+
+# (APPENDIX) APPENDIX {-}
+
+# Saved Data Objects
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## RDS Format for Individual Object
+```{r}
+
+rds <- list.files(path="./RDataRDS", pattern = "*.rds", full.names = TRUE)
+rds
+
+```
+
+## RData Format for Multiple Objects
+```{r}
+
+rdata <- list.files(path="./RDataRDS", pattern = "*.RData", full.names = TRUE)
+rdata
+
+```
+
+
+## CSV or TSV Format Files
+```{r}
+
+list.files(path="./RDataRDS", pattern = "*.csv|tsv", full.names = TRUE)
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+## All-in-One Input-Output Data
+lsdata("RDataRDS/saved_objects.RData")
+```
+
+
+## How to reload RDS or RData
+```{block, type="tmbinfo", echo=T}
+### RDS format e.g. foo.rds
+foo <-`readRDS("RDataRDS/foo.rds")`
+
+### RData format e.g. foo.RData
+`load("RDataRDS/foo.RData", verbose = TRUE)`
+
+### List objects in RData
+`lsdata("foo.RData")`
+```
+
+
+
+# Software and Packages
+
+## Basic dependencies
+* `r R.version.string`
+* `tidyverse` (v. `r packageVersion("tidyverse")`)
+* `knitr` (v. `r packageVersion("knitr")`)
+* `rmarkdown` (v. `r packageVersion("rmarkdown")`)
+* `bookdown` (v. `r packageVersion("bookdown")`)
+
+## Available on machine used 
+```{r}
+sessionInfo()
+
+```
+
+
+
+
+<!--chapter:end:99_appendix.Rmd-->
+
+`r if (knitr:::is_html_output()) '
+# References {-}
+'`
+
+
+<!--chapter:end:999-references.Rmd-->
+

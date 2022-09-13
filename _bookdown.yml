@@ -1,7 +1,7 @@
 language:
   ui:
     chapter_name: "Chapter "
-delete_merged_file: true
+delete_merged_file: false
 
 book_filename: "microbiome-part4"
 output_dir:
@@ -9,11 +9,12 @@ rmd_files: [
 "index.Rmd",
 "04a_data_exploration.Rmd",
 "04b_data_distribution.Rmd",
-"05a_alpha_diversity.Rmd",
-"05b_beta_diversity.Rmd",
-"05c_clusters_tree_heatmaps.Rmd",
-"05d_statistical_analysis.Rmd",
-"05e_taxa_prevalence.Rmd",
+# "05a_alpha_diversity.Rmd",
+# "05b_beta_diversity.Rmd",
+# "05c_clusters_tree_heatmaps.Rmd",
+# "05d_statistical_analysis.Rmd",
+# "05e_taxa_prevalence.Rmd",
+# "05f_feature_association.Rmd",
 "99_appendix.Rmd",
 "999-references.Rmd"
 ]

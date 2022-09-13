@@ -1,0 +1,153 @@
+# (PART) DIFFERENTIAL ABUNDANCE {-}
+
+# Feature Association
+
+## Load Example Data
+```{r eval=FALSE, include=FALSE}
+library(tidyverse)
+otutable_long <- readRDS("../REFER/RDataRDS/hyper_otudata.rds") %>% 
+  dplyr::select(-c((2:18))) %>% 
+  rename(Sample_ID = SampleID) %>% 
+  pivot_longer(-Sample_ID) %>% 
+  rename_all(tolower) %>%
+  filter(value != 0)
+  saveRDS(otutable_long, "RDataRDS/otu_lipids_long.rds")
+
+otutable_wide <- otutable_long %>%
+  pivot_wider(id_cols = sample_id, names_from = name, values_from = value)
+  saveRDS(otutable_wide, "RDataRDS/otutable_wide.rds")
+ 
+lip_otutable_long <- readRDS("../REFER/RDataRDS/hyper_otudata.rds") %>% 
+  dplyr::select(c(1, 5:18)) %>% 
+  rename(Sample_ID = SampleID) %>% 
+  pivot_longer(-Sample_ID) %>% 
+  rename_all(tolower) %>%
+  filter(value != 0)
+  saveRDS(lip_otutable_long, "RDataRDS/otu_lipids_long.rds")
+
+lip_otutable_wide <- lip_otutable_long %>%
+  pivot_wider(id_cols = sample_id, names_from = name, values_from = value)
+  saveRDS(lip_otutable_wide, "RDataRDS/lip_otutable_wide.rds")
+
+otu_lipids_table <- inner_join(lip_otutable_wide, otutable_wide, by = "sample_id") %>% 
+  pivot_longer(-sample_id, names_to = "feature", values_to = "value") %>%
+  filter(value != 0) %>%
+  pivot_wider(id_cols = sample_id, names_from = feature, values_from = value)
+saveRDS(otu_lipids_table, "RDataRDS/otu_lipids_table.rds")
+```
+
+## Define data sets to cross-correlate
+```{r}
+x <- readRDS("RDataRDS/otutable_wide.rds") %>% 
+  tibble::column_to_rownames("sample_id")
+y <- readRDS("RDataRDS/lip_otutable_wide.rds") %>% 
+  tibble::column_to_rownames("sample_id")
+```
+
+
+## Spearman Association Table
+```{r}
+corr_tbl <- microbiome::associate(x, y, method = "spearman", mode = "table", p.adj.threshold = 0.05, n.signif = 1) %>%
+  as.data.frame %>% head()
+```
+
+## Spearman Association Matrix
+```{r}
+corr_mtx <- microbiome::associate(x, y, method = "spearman", mode = "matrix", p.adj.threshold = 0.05, n.signif = 1) %>%
+  as.data.frame
+```
+
+## Association heatmaps
+
+### Heatmap 1: Using microbiome package
+```{r fig.height=4, fig.width=6}
+p <- microbiome::heat(corr_tbl, "X1", "X2", 
+          fill = "Correlation", 
+          star = "p.adj", 
+          p.adj.threshold = 0.05)
+  
+p + theme(text=element_text(size=10), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.key.size = unit(1.2, "cm"))
+
+```
+
+### Heatmap 2: Using ggplot2
+```{r fig.height=4, fig.width=6}
+# Order the rows and columns with levels argument if needed:
+corr_tbl$X1 <- factor(corr_tbl$X1, levels = unique(as.character(corr_tbl$X1)))
+corr_tbl$X2 <- factor(corr_tbl$X2, levels = unique(as.character(corr_tbl$X2)))
+
+# Set black-and-white theme
+library(ggplot2)
+theme_set(theme_bw())
+
+# Pick only the correlations with q<0.05
+# Note: this will leave other cells empty
+library(dplyr)
+subtable <- filter(corr_tbl, p.adj < 0.05)
+
+# Arrange the figure
+p <- ggplot(subtable, aes(x = X1, y = X2, fill = Correlation))
+p <- p + geom_tile() 
+p <- p + scale_fill_gradientn("Correlation", 
+                       breaks = seq(from = -1, to = 1, by = 0.2), 
+                   colours = c("darkblue", "blue", "white", "red", "darkred"), 
+                   limits = c(-1,1)) 
+
+# Polish texts
+p <- p + theme(axis.text.x=element_text(angle = 90, hjust=1, face = "italic"),
+               axis.text.y=element_text(size = 8))
+p <- p + xlab("") + ylab("")
+
+# Mark the most significant cells with stars
+p <- p + geom_text(data = subset(corr_tbl, p.adj < 0.02), 
+               aes(x = X1, y = X2, label = "+"), col = "white", size = 5)
+
+p + theme(text=element_text(size=10), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.key.size = unit(1.2, "cm"))
+
+
+```
+
+### Heatmap 3: Adding values
+```{r fig.height=4, fig.width=6}
+theme_set(theme_bw(20))
+df <- corr_tbl
+p <- ggplot(df, aes(X1, X2, group=X2)) 
+p <- p + geom_tile(aes(fill = Correlation)) 
+p <- p + geom_text(aes(fill = df$Correlation, label = round(df$Correlation, 1)), size = 2) 
+p <- p + scale_fill_gradientn("Correlation", 
+                      breaks = seq(from = -1, to = 1,  by = 0.25), 
+                      colours = c("blue", "white", "red"), 
+                  limits = c(-1, 1)) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, face="italic")) +
+        labs(x = "", y = "")
+
+p + theme(text=element_text(size=8), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.key.size = unit(1.2, "cm"))
+
+
+```
+
+
+### Heatmap 4: Using GGally package
+```{r fig.height=6, fig.width=6}
+library(GGally)
+ggcorr(x[, 1:10], method = c("pairwise", "spearman"), nbreaks = 20, hjust = 0.75)
+```
+
+```{r fig.height=6, fig.width=6}
+ggcorr(x[, 1:10], method = c("pairwise", "spearman"), nbreaks = 20, geom = "circle")
+```
+
+```{r fig.height=6, fig.width=6}
+ggcorr(x[, 1:10], method = c("pairwise", "spearman"), nbreaks = 20, label = TRUE, label_alpha = TRUE)
+```
+
+```{r fig.height=6, fig.width=6}
+ggcorr(data = NULL, cor_matrix = cor(x[, 1:10], use = "everything"), low = "steelblue", mid = "white", high = "darkred", midpoint = 0)
+```
+
